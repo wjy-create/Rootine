@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>悠悠成长 · 宝宝日程与发育规划</title>
+<meta name="theme-color" content="#8b6fd0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="悠悠成长">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root{
+  --bg:#fbf7f3; --card:#ffffff; --ink:#3d3a4e; --muted:#8b8798; --line:#efe7df;
+  --p1:#7c5cc4; --p1b:#f0e9fb; /* 粗大运动 紫 */
+  --p2:#d94f7a; --p2b:#fbe6ee; /* 精细动作 粉红 */
+  --p3:#3a9d6a; --p3b:#e3f4ea; /* 感知觉 绿 */
+  --p4:#3b82c4; --p4b:#e4eefb; /* 认知 蓝 */
+  --warm:#f6a04d; --warmb:#fdeedd;
+  --sleep:#6c7bd0; --feed:#e08a3c; --play:#3a9d6a; --care:#c46aa0; --out:#46a8b8;
+  --ok:#3a9d6a; --doing:#f0a836; --todo:#cfc8d6;
+  --shadow:0 2px 14px rgba(120,90,160,.08);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:-apple-system,"PingFang SC","Microsoft YaHei",Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.6}
+h1,h2,h3,h4{margin:0;font-weight:700}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,select,textarea{font-family:inherit;font-size:14px}
+.wrap{max-width:880px;margin:0 auto;padding:0 16px 90px}
+/* header */
+.top{background:linear-gradient(135deg,#8b6fd0,#c46aa0);color:#fff;padding:18px 16px 16px;position:sticky;top:0;z-index:20;box-shadow:0 2px 12px rgba(140,90,170,.2)}
+.top-in{max-width:880px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.babyface{width:44px;height:44px;border-radius:50%;background:#fff3;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
+.top h1{font-size:18px}
+.top .sub{font-size:12.5px;opacity:.9;margin-top:1px}
+.top .gear{margin-left:auto;font-size:20px;opacity:.95;background:#ffffff22;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+/* tabs */
+.tabs{display:flex;background:var(--card);position:sticky;top:78px;z-index:19;box-shadow:var(--shadow);border-radius:0 0 16px 16px;max-width:880px;margin:0 auto;overflow:hidden}
+.tabs button{flex:1;padding:11px 4px 9px;font-size:13px;color:var(--muted);border-bottom:3px solid transparent;transition:.15s}
+.tabs button .ic{display:block;font-size:18px;margin-bottom:1px}
+.tabs button.on{color:var(--p1);border-bottom-color:var(--p1);font-weight:600}
+.card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:16px;margin-top:14px}
+.card h2{font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:7px}
+.muted{color:var(--muted)}
+.small{font-size:12.5px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{background:var(--p1);color:#fff;padding:9px 15px;border-radius:10px;font-size:14px;font-weight:600}
+.btn.sec{background:var(--p1b);color:var(--p1)}
+.btn.ghost{background:#f3eef8;color:var(--muted)}
+.btn.sm{padding:6px 11px;font-size:13px;border-radius:8px}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:600}
+label.fld{display:block;margin:8px 0}
+label.fld span{display:block;font-size:12.5px;color:var(--muted);margin-bottom:3px}
+input[type=text],input[type=number],input[type=date],input[type=time],input[type=datetime-local],select,textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+textarea{min-height:120px;resize:vertical}
+.divider{height:1px;background:var(--line);margin:14px 0}
+/* schedule timeline */
+.bandbar{display:flex;align-items:center;gap:10px;background:var(--warmb);border-radius:12px;padding:10px 13px;margin-bottom:6px;flex-wrap:wrap}
+.bandbar b{color:var(--warm)}
+.targets{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px;margin:12px 0}
+.tgt{background:#faf7fc;border:1px solid var(--line);border-radius:12px;padding:10px}
+.tgt .t{font-size:12px;color:var(--muted)}
+.tgt .v{font-size:14px;font-weight:700;margin-top:2px}
+.tl{position:relative;margin-top:6px;padding-left:8px}
+.ev{display:flex;gap:11px;padding:9px 0;border-bottom:1px dashed var(--line)}
+.ev:last-child{border-bottom:none}
+.ev .tm{width:50px;flex-shrink:0;font-weight:700;font-size:13.5px;color:var(--ink)}
+.ev .dot{width:30px;flex-shrink:0;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.ev .bd{flex:1;min-width:0}
+.ev .bd .ti{font-weight:600;font-size:14px}
+.ev .bd .de{font-size:12.7px;color:var(--muted);margin-top:1px}
+.k-sleep{background:#e7e9f7;color:var(--sleep)}.k-feed{background:#fbe9d6;color:var(--feed)}
+.k-play{background:#e0f1e7;color:var(--play)}.k-meal{background:#fbe9d6;color:var(--feed)}
+.k-care{background:#f7e6f0;color:var(--care)}.k-out{background:#dcf0f3;color:var(--out)}.k-wake{background:#fff0d6;color:var(--warm)}
+.skref{display:inline-block;margin-top:4px;font-size:11.5px;background:#f0e9fb;color:var(--p1);padding:2px 8px;border-radius:14px;cursor:pointer}
+/* skill tree */
+.dimtabs{display:flex;gap:7px;margin-bottom:4px;flex-wrap:wrap}
+.dimtabs button{padding:7px 13px;border-radius:20px;font-size:13px;font-weight:600;background:#f1ecf6;color:var(--muted)}
+.dimtabs button.on{color:#fff}
+.prog{height:9px;background:#eee;border-radius:6px;overflow:hidden;margin:6px 0 2px}
+.prog i{display:block;height:100%;border-radius:6px}
+.bandgrp{margin-top:14px}
+.bandgrp .bh{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:7px;display:flex;align-items:center;gap:8px}
+.bandgrp .bh .cur{background:var(--warm);color:#fff;font-size:10.5px;padding:1px 7px;border-radius:10px}
+.nodes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.node{border:1.5px solid var(--line);border-radius:11px;padding:8px 10px;background:#fff;cursor:pointer;transition:.12s;position:relative}
+.node .nt{font-size:13px;font-weight:600;line-height:1.35}
+.node .nc{font-size:10.5px;color:var(--muted);margin-top:2px}
+.node .nn{font-size:11px;color:var(--p1);margin-top:4px;display:none}
+.node.has-note .nn{display:block}
+.node[data-s="done"]{border-color:var(--ok);background:#f1faf4}
+.node[data-s="doing"]{border-color:var(--doing);background:#fff8ec}
+.node .mk{position:absolute;top:6px;right:7px;font-size:13px}
+/* records */
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px}
+.seg button{padding:6px 12px;border-radius:18px;font-size:12.5px;background:#f1ecf6;color:var(--muted);font-weight:600}
+.seg button.on{background:var(--p1);color:#fff}
+.daygrp{margin-top:14px}
+.daygrp .dh{font-weight:700;font-size:13.5px;display:flex;justify-content:space-between;align-items:center;padding-bottom:5px;border-bottom:2px solid var(--line)}
+.daygrp .dh .sum{font-size:11.5px;color:var(--muted);font-weight:500}
+.rec{display:flex;gap:10px;align-items:center;padding:7px 2px;border-bottom:1px solid var(--line)}
+.rec .rt{width:48px;font-weight:700;font-size:13px;color:var(--muted)}
+.rec .ri{width:26px;text-align:center;font-size:15px}
+.rec .rc{flex:1;font-size:13.5px}
+.rec .rc small{color:var(--muted)}
+.rec .del{color:var(--p2);font-size:12px;opacity:.6}
+.empty{text-align:center;color:var(--muted);padding:26px 10px;font-size:13.5px}
+.empty .big{font-size:34px;display:block;margin-bottom:6px}
+/* modal */
+.mask{position:fixed;inset:0;background:#3d3a4e88;z-index:40;display:none;align-items:flex-end;justify-content:center}
+.mask.on{display:flex}
+.sheet{background:#fff;width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:18px 18px 26px;max-height:88vh;overflow:auto;animation:up .2s}
+@keyframes up{from{transform:translateY(40px);opacity:.5}to{transform:none;opacity:1}}
+.sheet h3{font-size:16px;margin-bottom:10px;display:flex;justify-content:space-between}
+.sheet .x{color:var(--muted);font-size:20px}
+.note-warn{background:var(--warmb);color:#9a6520;border-radius:10px;padding:9px 12px;font-size:12.5px;margin-top:8px}
+.foot{text-align:center;color:var(--muted);font-size:11.5px;margin-top:22px;line-height:1.7}
+@media(min-width:560px){.sheet{border-radius:20px;margin-bottom:auto;margin-top:auto}.mask{align-items:center}}
+</style>
+</head>
+<body>
+<div class="top"><div class="top-in">
+  <div class="babyface">👶</div>
+  <div><h1 id="hName">悠悠</h1><div class="sub" id="hAge">—</div></div>
+  <button class="gear" onclick="openSettings()">⚙️</button>
+</div></div>
+<div class="tabs">
+  <button id="tab-day" class="on" onclick="go('day')"><span class="ic">🗓️</span>今日日程</button>
+  <button id="tab-skill" onclick="go('skill')"><span class="ic">🌳</span>技能树</button>
+  <button id="tab-rec" onclick="go('rec')"><span class="ic">🍼</span>喂养记录</button>
+</div>
+<div class="wrap">
+  <div id="view-day"></div>
+  <div id="view-skill" style="display:none"></div>
+  <div id="view-rec" style="display:none"></div>
+  <div class="foot">悠悠成长 · 纯本地存储，数据只保存在此设备浏览器中<br>建议定期在 ⚙️ 设置里导出备份。本工具内容为科学育儿参考，不替代儿科医生建议。</div>
+</div>
+
+<div class="mask" id="mask"><div class="sheet" id="sheet"></div></div>
+
+<script>
+/* ============ 数据：四维技能树 ============ */
+const BANDS=['0-3M','4-6M','7-9M','10-12M','13-18M','19-24M','25-30M','31-36M','3-6岁'];
+const DIMS={
+ gross:{name:'粗大运动',icon:'🤸',color:'#7c5cc4',bg:'#f0e9fb',nodes:[
+  [0,'竖抱抬头'],[0,'趴卧抬头'],
+  [1,'撑地坐3分钟'],[1,'靠坐5秒'],[1,'翻身·趴转躺'],[1,'翻身·躺转趴'],[1,'来回打滚'],[1,'伸手要抱抱'],
+  [2,'独立坐稳10分钟'],[2,'扶物站立'],[2,'一阶爬·趴卧小燕飞'],[2,'二阶爬·匍匐爬行'],[2,'三阶爬·手膝爬行'],[2,'往正下方砸'],
+  [3,'盆腿骑'],[3,'蹲下捡东西'],[3,'独自站立'],[3,'扶栏蟹行'],[3,'牵手跟走'],[3,'越障爬行'],[3,'往前下方丢球'],
+  [4,'蹬腿骑车'],[4,'扶物单脚踢'],[4,'快步走·踮脚跑'],[4,'独自行走'],[4,'倒退拉车'],[4,'爬楼梯'],[4,'过肩扔球'],
+  [5,'避障骑行'],[5,'不扶物单脚踢'],[5,'原地并脚跳摸高'],[5,'避障行走'],[5,'沿线行走'],[5,'重叠步上下楼梯'],[5,'命中粘靶球'],
+  [6,'走独木桥'],[6,'腾空跑'],[6,'立定跳远'],[6,'高处跳下'],[6,'交叉步上下楼梯'],[6,'接住空中抛球'],[6,'接住地滚球'],
+  [7,'两轮平衡车'],[7,'走过河石'],[7,'分脚跨越跳'],[7,'攀爬'],[7,'挥拍击球'],
+  [8,'平衡车竞速'],[8,'踩梅花桩/高跷'],[8,'集体追逐游戏'],[8,'轮滑'],[8,'爬山攀岩'],[8,'打高尔夫球'],
+ ]},
+ fine:{name:'精细动作',icon:'✋',color:'#d94f7a',bg:'#fbe6ee',nodes:[
+  [0,'抓握反射与松手'],
+  [1,'精准拍打'],[1,'主动够取'],[1,'挥臂摇晃'],[1,'全掌抓握'],
+  [2,'抠洞不取物'],[2,'拉/撕取'],[2,'间接取物'],[2,'把玩具放盒子里'],
+  [3,'抠洞取物'],[3,'开关柜门/推拉门'],[3,'翻纸板书'],[3,'拨弄开关拉环'],[3,'四指捏·猿式抓握'],[3,'马克杯放球取出'],[3,'圆环套柱'],[3,'双手分别拿玩具'],[3,'换手'],[3,'持物对敲'],
+  [4,'剥香蕉'],[4,'拨动/按压'],[4,'翻薄页书/机关书'],[4,'拉拉链'],[4,'三指捏'],[4,'瓶里放黄豆并倒出'],[4,'盖盖子/圆形嵌板'],[4,'插小棍/按硬币'],[4,'插拔笔帽'],[4,'拍手鼓掌'],[4,'拧糖果玩具'],
+  [5,'剥蛋壳/剥橘子'],[5,'开锁/组合锁'],[5,'扣安全带卡扣'],[5,'二指指尖捏'],[5,'试管放绿豆'],[5,'轮廓凹凸嵌板'],[5,'拼插8厘米雪花片'],[5,'端杯喝水不洒'],[5,'拧水龙头/拧毛巾'],
+  [6,'扣羊角扣'],[6,'解鞋带'],[6,'镶嵌蘑菇钉'],[6,'插拔钥匙/USB'],[6,'串半珠'],[6,'两杯来回倒水'],[6,'拧瓶盖一圈半'],
+  [7,'五指对捏'],[7,'儿童水壶冲奶粉'],[7,'拧螺丝三圈以上'],
+  [8,'剥荔枝'],[8,'编织'],[8,'自主穿衣服'],[8,'弹琴/打字'],[8,'穿针引线'],[8,'绣花'],[8,'咖啡拉花'],
+ ]},
+ percep:{name:'感知觉',icon:'👁️',color:'#3a9d6a',bg:'#e3f4ea',nodes:[
+  [0,'湿尿屁反应'],[0,'香甜偏好期'],[0,'简单追声'],[0,'黑白偏好'],[0,'红白偏好'],[0,'四处张望'],
+  [1,'口腔探索行为'],[1,'咸味偏好期'],[1,'声音偏好'],[1,'浓色调偏好'],[1,'几何图案偏好'],[1,'人脸偏好'],[1,'红球平移及环绕'],
+  [2,'皮肤饥渴'],[2,'香妈妈臭爸爸'],[2,'拱食行为'],[2,'追踪不可见声音'],[2,'万物皆可敲'],[2,'深度视觉萌芽'],[2,'认实物卡片'],[2,'物品远离回返轨迹'],
+  [3,'触觉·光滑与粗糙'],[3,'酸得皱起脸'],[3,'随音乐晃动'],[3,'盯着小东西看'],[3,'折线与螺旋下落'],
+  [4,'触觉·水和沙子'],[4,'分辨不同香臭'],[4,'明确节拍'],[4,'敲击奏乐'],[4,'认简单剧情'],[4,'复杂交错轨迹'],
+  [5,'触觉·软硬冷热'],[5,'律动快慢拍'],[5,'故事阅读'],
+  [6,'旋律哼歌'],
+  [8,'美食品鉴'],[8,'打击乐/舞蹈'],[8,'唱儿歌'],[8,'找不同'],[8,'预判轨迹'],
+ ]},
+ cog:{name:'认知',icon:'🧠',color:'#3b82c4',bg:'#e4eefb',nodes:[
+  [0,'认识自己的手脚'],[0,'手脚触发反应'],
+  [1,'辨识父母'],[1,'外界与我有联系'],[1,'识别哭笑'],[1,'追视最后藏物'],[1,'操作单一开关'],
+  [2,'怕生反应'],[2,'寻找眼前藏物'],[2,'操作各处藏物'],
+  [3,'唤名反应'],[3,'辨识父母照片'],[3,'识别自己'],[3,'认识五官'],[3,'寻找多重藏物'],[3,'操作多按键设备'],
+  [4,'指物行为'],[4,'性别认知·男女'],[4,'辨识家人照片'],[4,'认识大肢体'],[4,'点红实验'],[4,'更多情绪'],[4,'按图索骥躲宝'],[4,'档位调节因果'],[4,'照顾娃娃'],[4,'模仿劳动'],[4,'颜色·红黄蓝绿'],[4,'日用品10-30个'],
+  [5,'各年龄男女'],[5,'丰富情绪'],[5,'参与家务劳动'],[5,'其他颜色'],[5,'日用品一级分类'],[5,'日月昼夜'],[5,'基础形状'],[5,'初级配对'],
+  [6,'性别刻板印象'],[6,'花纹认知'],[6,'日用品二级分类'],[6,'天气现象'],[6,'认识小肢体'],[6,'自然现象因果'],[6,'丰富职业扮演'],[6,'颜色形状'],[6,'高级配对'],[6,'数量概念'],
+  [8,'数理逻辑应用'],[8,'抽象组合形状'],[8,'立体形状'],[8,'事物逻辑关系'],[8,'季节物候'],[8,'地理知识'],[8,'思维题'],[8,'小社会角色游戏'],
+ ]},
+};
+
+/* ============ 数据：分月龄日程方案 ============ */
+const ROUTINES={
+ '0-3M':{label:'0–3 月 · 新生儿',
+  targets:{睡眠:'14–17 h/天',夜觉:'约 8–9 h(碎觉)',小睡:'白天 3–4 次',喂养:'纯奶按需·约 2–3 h 一次',辅食:'暂不添加',补充:'维生素 D 400 IU/天'},
+  tip:'核心是规律喂养+大量趴卧练习(tummy time)+多回应。作息以宝宝信号为准，下表为参考节律。',
+  list:[
+   ['07:00','wake','起床·换尿布·喂奶',''],
+   ['07:30','play','清醒·趴卧抬头练习','每天数次，每次几分钟｜粗大:趴卧抬头','gross'],
+   ['08:00','sleep','小睡',''],
+   ['09:30','feed','喂奶·黑白卡追视','30cm 处缓慢移动｜感知:黑白偏好','percep'],
+   ['10:00','sleep','小睡',''],
+   ['11:30','feed','喂奶·轻声对话回应','面对面说话/模仿表情｜认知:手脚触发反应','cog'],
+   ['12:00','sleep','小睡',''],
+   ['14:00','feed','喂奶·抚触按摩','感知:口腔探索/皮肤','percep'],
+   ['14:30','sleep','小睡',''],
+   ['16:00','feed','喂奶·竖抱抬头','粗大:竖抱抬头','gross'],
+   ['16:30','sleep','小睡',''],
+   ['18:00','care','洗澡·抚触',''],
+   ['19:00','feed','睡前奶·调暗灯光',''],
+   ['19:30','sleep','夜觉(夜间按需 2–3 次喂奶)',''],
+  ]},
+ '4-6M':{label:'4–6 月',
+  targets:{睡眠:'12–16 h/天',夜觉:'约 10–11 h',小睡:'白天 3 次',喂养:'奶 5–6 次·日总约 800–1000 ml',辅食:'满 6 月引入(高铁米粉/肉泥/蛋黄)',补充:'维生素 D 400 IU/天'},
+  tip:'敏感期：翻身、够取、口腔探索。满 6 月开始尝第一口辅食(泥糊状、含铁优先)。',
+  list:[
+   ['07:00','wake','起床·喂奶',''],
+   ['07:30','play','清醒·翻身/够取玩具','粗大:翻身 ｜ 精细:主动够取','gross'],
+   ['08:30','sleep','小睡 1',''],
+   ['10:00','feed','喂奶',''],
+   ['10:30','play','人脸/几何卡·追声游戏','感知:人脸偏好/声音偏好','percep'],
+   ['11:30','sleep','小睡 2',''],
+   ['13:00','meal','喂奶 +(满6月)辅食:高铁米粉','由稀到稠，一勺起','fine'],
+   ['13:30','play','撑地坐练习','粗大:撑地坐3分钟','gross'],
+   ['14:30','sleep','小睡 3',''],
+   ['16:00','feed','喂奶',''],
+   ['16:30','out','户外散步·感官探索','看树影、听鸟声','percep'],
+   ['17:30','play','抚触/口腔玩具','感知:口腔探索行为','percep'],
+   ['18:30','care','洗澡·抚触',''],
+   ['19:00','feed','睡前奶',''],
+   ['19:30','sleep','夜觉(夜间按需 1–2 次)',''],
+  ]},
+ '7-9M':{label:'7–9 月',
+  targets:{睡眠:'约 14 h/天',夜觉:'约 11 h',小睡:'白天 2–3 次',喂养:'奶约 600–800 ml/天',辅食:'2–3 餐·泥→颗粒+手指食物',补充:'维生素 D 400 IU·关注补铁'},
+  tip:'敏感期：爬行、对敲、客体恒存(躲猫猫)。辅食增稠加颗粒，引入手指食物，重点补铁。',
+  list:[
+   ['07:00','wake','起床·晨奶',''],
+   ['07:30','care','维生素 D',''],
+   ['08:00','meal','辅食早餐','含铁米粉/蛋黄/肉泥','fine'],
+   ['08:45','play','爬行练习','粗大:匍匐爬行/手膝爬行','gross'],
+   ['09:30','sleep','小睡 1 (1–1.5 h)',''],
+   ['11:00','feed','喂奶',''],
+   ['11:30','meal','辅食午餐','颗粒粥+蔬菜泥','fine'],
+   ['12:15','play','对敲/躲猫猫','精细:持物对敲 ｜ 认知:寻找眼前藏物','fine'],
+   ['13:30','sleep','小睡 2 (1.5–2 h)',''],
+   ['15:00','feed','喂奶',''],
+   ['15:30','out','户外散步·追声','感知:追踪不可见声音','percep'],
+   ['16:30','play','扶站练习','粗大:扶物站立','gross'],
+   ['17:30','meal','辅食晚餐','手指食物锻炼抓握','fine'],
+   ['18:30','care','洗澡·抚触',''],
+   ['19:00','feed','睡前奶',''],
+   ['19:30','sleep','夜觉(夜间按需 1–2 次)',''],
+  ]},
+ '10-12M':{label:'10–12 月',
+  targets:{睡眠:'13–14 h/天',夜觉:'约 11 h',小睡:'白天 2 次',喂养:'奶约 600–800 ml/天',辅食:'3 餐+手指食物·颗粒小块',补充:'维生素 D 400 IU'},
+  tip:'敏感期：扶站扶走、抠取、寻找多重藏物。鼓励自主抓握进食。',
+  list:[
+   ['07:00','wake','起床·晨奶',''],
+   ['07:30','care','维生素 D',''],
+   ['08:00','meal','辅食早餐','颗粒粥/手指食物','fine'],
+   ['08:45','play','扶站扶走','粗大:独自站立/扶栏蟹行','gross'],
+   ['09:30','sleep','小睡 1 (1–1.5 h)',''],
+   ['11:00','feed','喂奶',''],
+   ['11:30','meal','辅食午餐',''],
+   ['12:15','play','抠取/翻书','精细:抠洞取物/翻纸板书','fine'],
+   ['13:30','sleep','小睡 2 (1.5 h)',''],
+   ['15:00','feed','喂奶',''],
+   ['15:30','out','户外散步·自然观察',''],
+   ['16:30','play','多重藏物躲猫猫','认知:寻找多重藏物','cog'],
+   ['17:30','meal','辅食晚餐',''],
+   ['18:30','care','洗澡·绘本',''],
+   ['19:00','feed','睡前奶',''],
+   ['19:30','sleep','夜觉',''],
+  ]},
+ '13-18M':{label:'13–18 月',
+  targets:{睡眠:'12–14 h/天',夜觉:'约 11 h',小睡:'1–2 次(15–18月并为 1 次)',喂养:'奶约 400–500 ml/天',辅食:'三餐+2加餐·接近家庭饮食',补充:'维生素 D 400 IU'},
+  tip:'敏感期：独走爬楼梯、三指捏、指物与颜色认知。逐步从两觉过渡到一个午觉。',
+  list:[
+   ['07:00','wake','起床·晨奶',''],
+   ['07:30','meal','早餐',''],
+   ['08:15','play','独走/推拉玩具','粗大:独自行走','gross'],
+   ['09:30','out','户外活动·探索',''],
+   ['11:30','meal','午餐',''],
+   ['12:30','sleep','午睡 (1.5–2 h)',''],
+   ['14:30','feed','加餐 + 奶',''],
+   ['15:00','play','三指捏/嵌板','精细:三指捏/盖盖子','fine'],
+   ['16:00','out','户外散步',''],
+   ['17:30','meal','晚餐',''],
+   ['18:30','care','洗澡·绘本','认知:指物/颜色认知','cog'],
+   ['19:00','feed','睡前奶',''],
+   ['19:30','sleep','夜觉',''],
+  ]},
+ '19-24M':{label:'19–24 月',
+  targets:{睡眠:'11–14 h/天',夜觉:'约 11 h',小睡:'1 次午睡 (1.5–2 h)',喂养:'奶约 400–500 ml/天',辅食:'三餐+2加餐·鼓励自主进食',补充:'维生素 D 400 IU'},
+  tip:'敏感期：跑跳、二指捏与开锁、角色扮演。给勺子让宝宝自己吃。',
+  list:[
+   ['07:00','wake','起床·晨奶',''],
+   ['07:30','meal','早餐(自主用勺)',''],
+   ['08:15','play','跑跳/球类','粗大:原地跳/踢球','gross'],
+   ['09:30','out','户外活动',''],
+   ['11:30','meal','午餐',''],
+   ['12:30','sleep','午睡 (1.5–2 h)',''],
+   ['14:30','feed','加餐 + 奶',''],
+   ['15:00','play','开锁/拼插','精细:开锁/拼插雪花片','fine'],
+   ['16:00','out','户外散步·社交',''],
+   ['17:30','meal','晚餐',''],
+   ['18:30','care','洗澡·过家家','认知:照顾娃娃','cog'],
+   ['19:30','sleep','夜觉',''],
+  ]},
+ '25-36M':{label:'25–36 月',
+  targets:{睡眠:'11–13 h/天',夜觉:'约 11 h',小睡:'1 次午睡 (1–1.5 h)',喂养:'奶约 400 ml/天',辅食:'三餐+加餐·多样均衡',补充:'维生素 D 400 IU'},
+  tip:'敏感期：双脚跳上下楼梯、串珠倒水、配对数量与职业扮演。部分宝宝午觉渐少。',
+  list:[
+   ['07:00','wake','起床',''],
+   ['07:30','meal','早餐(自主进食)',''],
+   ['08:15','play','跳跃/平衡','粗大:立定跳远/走独木桥','gross'],
+   ['09:00','out','户外大运动',''],
+   ['11:30','meal','午餐',''],
+   ['12:30','sleep','午睡 (1–1.5 h)',''],
+   ['14:00','feed','加餐 + 奶',''],
+   ['14:45','play','串珠/倒水/蘑菇钉','精细:串半珠/两杯倒水','fine'],
+   ['16:00','out','户外社交游戏',''],
+   ['17:30','meal','晚餐',''],
+   ['18:30','care','洗澡·角色游戏','认知:职业扮演/配对','cog'],
+   ['19:30','sleep','夜觉',''],
+  ]},
+};
+function ageToRoutineKey(m){if(m<4)return'0-3M';if(m<7)return'4-6M';if(m<10)return'7-9M';if(m<13)return'10-12M';if(m<19)return'13-18M';if(m<25)return'19-24M';return'25-36M';}
+function ageToBandIdx(m){if(m<4)return 0;if(m<7)return 1;if(m<10)return 2;if(m<13)return 3;if(m<19)return 4;if(m<25)return 5;if(m<31)return 6;if(m<37)return 7;return 8;}
+
+/* ============ 存储 ============ */
+const LS='yoyogrow_v1';
+let DB=load();
+function load(){try{const d=JSON.parse(localStorage.getItem(LS));if(d)return d;}catch(e){}
+  return {profile:{name:'悠悠',birth:'2025-08-18'},skills:{},records:[],pref:{wake:'07:00'}};}
+function save(){localStorage.setItem(LS,JSON.stringify(DB));}
+
+/* ============ 工具 ============ */
+function ageInfo(refDate){
+  const b=new Date(DB.profile.birth+'T00:00:00');const r=refDate?new Date(refDate+'T00:00:00'):new Date();
+  let mo=(r.getFullYear()-b.getFullYear())*12+(r.getMonth()-b.getMonth());let d=r.getDate()-b.getDate();
+  if(d<0){mo--;const pm=new Date(r.getFullYear(),r.getMonth(),0).getDate();d+=pm;}
+  const totalMonths=mo; return {months:totalMonths,text:Math.floor(mo/12)>0?`${Math.floor(mo/12)}岁${mo%12}个月${d}天`:`${mo}个月${d}天`};
+}
+function pad(n){return String(n).padStart(2,'0');}
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function shiftTime(hhmm,deltaMin){const[h,m]=hhmm.split(':').map(Number);let t=h*60+m+deltaMin;t=((t%1440)+1440)%1440;return pad(Math.floor(t/60))+':'+pad(t%60);}
+const KICON={sleep:'😴',feed:'🍼',play:'🧸',meal:'🥣',care:'🛁',out:'🌳',wake:'🌅'};
+
+/* ============ 视图切换 ============ */
+let CUR='day';
+function go(v){CUR=v;['day','skill','rec'].forEach(x=>{document.getElementById('view-'+x).style.display=x===v?'block':'none';document.getElementById('tab-'+x).classList.toggle('on',x===v);});
+  if(v==='day')renderDay();if(v==='skill')renderSkill();if(v==='rec')renderRec();window.scrollTo(0,0);}
+
+/* ============ 顶栏 ============ */
+function renderHeader(){const a=ageInfo();document.getElementById('hName').textContent=DB.profile.name||'宝宝';
+  document.getElementById('hAge').textContent=`${a.text} · ${ROUTINES[ageToRoutineKey(a.months)].label}`;}
+
+/* ============ 今日日程 ============ */
+let dayDate=todayStr();
+function renderDay(){
+  const a=ageInfo(dayDate);const key=ageToRoutineKey(a.months);const R=ROUTINES[key];
+  const wake=DB.pref.wake||'07:00';const delta=(()=>{const[h,m]=wake.split(':').map(Number);return h*60+m-7*60;})();
+  let h='';
+  h+=`<div class="card"><div class="row" style="justify-content:space-between">
+    <h2>🗓️ 今日日程</h2>
+    <input type="date" value="${dayDate}" style="width:auto" onchange="dayDate=this.value;renderDay()">
+  </div>
+  <div class="bandbar"><b>${R.label}</b><span class="small muted">${a.text}</span>
+   <label class="small" style="margin-left:auto">起床时间 <input type="time" value="${wake}" style="width:auto;display:inline-block;padding:4px 7px" onchange="DB.pref.wake=this.value;save();renderDay()"></label>
+  </div>
+  <div class="small muted" style="margin:2px 0 4px">💡 ${R.tip}</div>
+  <div class="targets">${Object.entries(R.targets).map(([k,v])=>`<div class="tgt"><div class="t">${k}</div><div class="v">${v}</div></div>`).join('')}</div>
+  <div class="tl">`;
+  R.list.forEach(([t,k,ti,de,sk])=>{
+    h+=`<div class="ev"><div class="tm">${shiftTime(t,delta)}</div>
+      <div class="dot k-${k}">${KICON[k]||'•'}</div>
+      <div class="bd"><div class="ti">${ti}</div>${de?`<div class="de">${de}</div>`:''}
+      ${sk?`<span class="skref" onclick="go('skill');setTimeout(()=>focusDim('${sk}'),60)">🌳 去技能树看「${DIMS[sk].name}」</span>`:''}
+      </div></div>`;
+  });
+  h+=`</div></div>`;
+  // 本月龄重点技能
+  const bi=ageToBandIdx(a.months);
+  h+=`<div class="card"><h2>⭐ 本月龄重点技能 <span class="small muted">(${BANDS[bi]})</span></h2>
+   <div class="small muted" style="margin-bottom:6px">在技能树里标记掌握情况，日程会聚焦这些方向。</div>`;
+  Object.entries(DIMS).forEach(([dk,dim])=>{
+    const ns=dim.nodes.map((n,i)=>[n,i]).filter(([n])=>n[0]===bi);
+    if(!ns.length)return;
+    h+=`<div style="margin-top:8px"><div class="small" style="font-weight:700;color:${dim.color}">${dim.icon} ${dim.name}</div><div class="nodes" style="margin-top:5px">`;
+    ns.forEach(([n,i])=>{const id=dk+'_'+i;const s=(DB.skills[id]||{}).status||'todo';
+      h+=`<div class="node" data-s="${s}" onclick="cycleSkill('${id}');renderDay()"><div class="nt">${n[1]}</div><span class="mk">${s==='done'?'✅':s==='doing'?'🔸':'⬜'}</span></div>`;});
+    h+=`</div></div>`;
+  });
+  h+=`</div>`;
+  document.getElementById('view-day').innerHTML=h;
+}
+
+/* ============ 技能树 ============ */
+let curDim='gross';
+function focusDim(d){curDim=d;renderSkill();}
+function renderSkill(){
+  const a=ageInfo();const curBand=ageToBandIdx(a.months);
+  let h=`<div class="card"><h2>🌳 技能树</h2>
+   <div class="small muted" style="margin-bottom:8px">点节点切换：⬜未开始 → 🔸正在练 → ✅已掌握。长按(或点📝)记笔记。</div>
+   <div class="dimtabs">`;
+  Object.entries(DIMS).forEach(([k,d])=>{h+=`<button class="${k===curDim?'on':''}" style="${k===curDim?`background:${d.color}`:''}" onclick="focusDim('${k}')">${d.icon} ${d.name}</button>`;});
+  h+=`</div>`;
+  const dim=DIMS[curDim];
+  const total=dim.nodes.length;let done=0,doing=0;
+  dim.nodes.forEach((n,i)=>{const s=(DB.skills[curDim+'_'+i]||{}).status;if(s==='done')done++;else if(s==='doing')doing++;});
+  h+=`<div class="prog"><i style="width:${total?Math.round(done/total*100):0}%;background:${dim.color}"></i></div>
+   <div class="small muted">已掌握 ${done} · 正在练 ${doing} · 共 ${total} 项</div>`;
+  // group by band
+  for(let b=0;b<BANDS.length;b++){
+    const ns=dim.nodes.map((n,i)=>[n,i]).filter(([n])=>n[0]===b);
+    if(!ns.length)continue;
+    h+=`<div class="bandgrp"><div class="bh">${BANDS[b]} ${b===curBand?'<span class="cur">当前月龄</span>':''}</div><div class="nodes">`;
+    ns.forEach(([n,i])=>{const id=curDim+'_'+i;const o=DB.skills[id]||{};const s=o.status||'todo';
+      h+=`<div class="node ${o.note?'has-note':''}" data-s="${s}">
+        <div onclick="cycleSkill('${id}');renderSkill()"><div class="nt">${n[1]}</div></div>
+        <span class="mk" onclick="cycleSkill('${id}');renderSkill()">${s==='done'?'✅':s==='doing'?'🔸':'⬜'}</span>
+        ${o.note?`<div class="nn">📝 ${o.note}</div>`:''}
+        <div class="small" style="margin-top:4px;color:var(--muted);cursor:pointer" onclick="noteSkill('${id}','${n[1].replace(/'/g,'')}')">📝 笔记</div>
+      </div>`;});
+    h+=`</div></div>`;
+  }
+  h+=`</div>`;
+  document.getElementById('view-skill').innerHTML=h;
+}
+function cycleSkill(id){const o=DB.skills[id]||{};const s=o.status||'todo';
+  o.status=s==='todo'?'doing':s==='doing'?'done':'todo';o.date=todayStr();DB.skills[id]=o;save();}
+function noteSkill(id,label){const o=DB.skills[id]||{};
+  openSheet(`<h3>📝 ${label}<span class="x" onclick="closeSheet()">×</span></h3>
+   <label class="fld"><span>观察笔记（蒙氏：记录你观察到的进展）</span><textarea id="nt">${o.note||''}</textarea></label>
+   <div class="row"><button class="btn" onclick="DB.skills['${id}']=Object.assign(DB.skills['${id}']||{},{note:document.getElementById('nt').value});save();closeSheet();renderSkill()">保存</button>
+   <button class="btn ghost" onclick="closeSheet()">取消</button></div>`);
+}
+
+/* ============ 喂养记录 ============ */
+const RTYPES={
+  feed_breast:{i:'🤱',n:'母乳'},feed_formula:{i:'🍼',n:'配方奶'},feed_solid:{i:'🥣',n:'辅食'},
+  sleep:{i:'😴',n:'睡眠'},diaper_pee:{i:'💧',n:'尿尿'},diaper_poop:{i:'💩',n:'便便'},
+  vitamin:{i:'💊',n:'补充剂'},walk:{i:'🌳',n:'户外'},bath:{i:'🛁',n:'洗澡'},growth:{i:'📏',n:'生长'},other:{i:'•',n:'其他'}};
+let recFilter='all';
+function recDesc(r){
+  if(r.type==='feed_breast')return`母乳 左${r.leftMin||0}分 右${r.rightMin||0}分`;
+  if(r.type==='feed_formula')return`配方奶 <b>${r.ml||0}ml</b>`;
+  if(r.type==='feed_solid')return`辅食 ${r.food||''}${r.ml?` <small>${r.ml}ml</small>`:''}`;
+  if(r.type==='sleep')return`睡眠 ${fmtDur(r.durationMin)}`;
+  if(r.type==='growth')return[r.weightKg?`体重 ${r.weightKg}kg`:'',r.heightCm?`身高 ${r.heightCm}cm`:'',r.note||''].filter(Boolean).join(' ');
+  if(r.type==='walk')return`户外 ${r.durationMin?fmtDur(r.durationMin):''}`;
+  return (RTYPES[r.type]||RTYPES.other).n+(r.note?` <small>${r.note}</small>`:'');
+}
+function fmtDur(m){if(!m)return'';const h=Math.floor(m/60);return(h?h+'h':'')+(m%60?(m%60)+'m':(h?'':'0m'));}
+function sleepMinOnDay(day){const s0=new Date(day+'T00:00:00').getTime();const s1=s0+86400000;let t=0;
+  DB.records.forEach(r=>{if(r.type!=='sleep'||!r.durationMin)return;const st=new Date(r.dt).getTime();const en=st+r.durationMin*60000;const ov=Math.min(en,s1)-Math.max(st,s0);if(ov>0)t+=ov/60000;});return Math.round(t);}
+function dkey(iso){return iso.slice(0,10);}
+function dtime(iso){return iso.slice(11,16);}
+function renderRec(){
+  let h=`<div class="card"><div class="row" style="justify-content:space-between"><h2>🍼 喂养记录</h2>
+    <div class="row"><button class="btn sm" onclick="addRec()">＋ 记一笔</button>
+    <button class="btn sm sec" onclick="importSheet()">⬇️ 导入</button></div></div>
+   <div class="seg">
+    ${['all','feed','sleep','diaper','growth'].map(f=>`<button class="${recFilter===f?'on':''}" onclick="recFilter='${f}';renderRec()">${({all:'全部',feed:'喂养',sleep:'睡眠',diaper:'尿布',growth:'生长'})[f]}</button>`).join('')}
+   </div>`;
+  let recs=DB.records.slice().sort((a,b)=>b.dt.localeCompare(a.dt));
+  recs=recs.filter(r=>{if(recFilter==='all')return true;if(recFilter==='feed')return r.type.startsWith('feed');if(recFilter==='sleep')return r.type==='sleep';if(recFilter==='diaper')return r.type.startsWith('diaper');if(recFilter==='growth')return r.type==='growth';return true;});
+  if(!recs.length){h+=`<div class="empty"><span class="big">🍼</span>还没有记录。<br>点「记一笔」手动添加，或「导入」把 Piyolog 等 App 的数据迁过来。</div>`;}
+  else{
+    const days={};recs.forEach(r=>{(days[dkey(r.dt)]=days[dkey(r.dt)]||[]).push(r);});
+    Object.keys(days).sort((a,b)=>b.localeCompare(a)).forEach(day=>{
+      const list=days[day];const all=DB.records.filter(r=>dkey(r.dt)===day);
+      let ml=0,lmin=0,rmin=0,pee=0,poop=0,solid=0;const sleep=sleepMinOnDay(day);
+      all.forEach(r=>{if(r.type==='feed_formula')ml+=r.ml||0;if(r.type==='feed_breast'){lmin+=r.leftMin||0;rmin+=r.rightMin||0;}if(r.type==='diaper_pee')pee++;if(r.type==='diaper_poop')poop++;if(r.type==='feed_solid')solid++;});
+      const sum=[ml?`奶${ml}ml`:'',(lmin+rmin)?`母乳${lmin+rmin}分`:'',solid?`辅食${solid}`:'',sleep?`睡${fmtDur(sleep)}`:'',poop?`💩${poop}`:''].filter(Boolean).join(' · ');
+      h+=`<div class="daygrp"><div class="dh"><span>${fmtDay(day)}</span><span class="sum">${sum}</span></div>`;
+      list.forEach(r=>{h+=`<div class="rec"><div class="rt">${dtime(r.dt)}</div><div class="ri">${(RTYPES[r.type]||RTYPES.other).i}</div>
+        <div class="rc">${recDesc(r)}</div><button class="del" onclick="delRec('${r.id}')">删除</button></div>`;});
+      h+=`</div>`;
+    });
+  }
+  h+=`</div>
+   <div class="card"><h2>💾 备份与导出</h2>
+    <div class="row"><button class="btn sm sec" onclick="exportJSON()">导出完整备份(JSON)</button>
+    <button class="btn sm sec" onclick="exportCSV()">导出记录(CSV)</button></div>
+    <div class="note-warn">数据仅存于本设备浏览器。换设备/清缓存前请先导出备份。</div></div>`;
+  document.getElementById('view-rec').innerHTML=h;
+}
+function fmtDay(d){const dt=new Date(d+'T00:00:00');const w='日一二三四五六'[dt.getDay()];const t=todayStr();
+  return `${dt.getMonth()+1}月${dt.getDate()}日 周${w}`+(d===t?' · 今天':'');}
+function delRec(id){if(confirm('删除这条记录？')){DB.records=DB.records.filter(r=>r.id!==id);save();renderRec();}}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+
+function addRec(){
+  const now=new Date();const dl=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes());
+  openSheet(`<h3>＋ 记一笔<span class="x" onclick="closeSheet()">×</span></h3>
+   <label class="fld"><span>类型</span><select id="rty" onchange="recFields()">
+     ${Object.entries(RTYPES).filter(([k])=>k!=='other').map(([k,v])=>`<option value="${k}">${v.i} ${v.n}</option>`).join('')}</select></label>
+   <label class="fld"><span>时间</span><input type="datetime-local" id="rdt" value="${dl}"></label>
+   <div id="rfields"></div>
+   <div class="row" style="margin-top:12px"><button class="btn" onclick="saveRec()">保存</button><button class="btn ghost" onclick="closeSheet()">取消</button></div>`);
+  recFields();
+}
+function recFields(){const t=document.getElementById('rty').value;let h='';
+  if(t==='feed_formula')h=`<label class="fld"><span>奶量 ml</span><input type="number" id="f_ml" placeholder="例如 100"></label>`;
+  else if(t==='feed_breast')h=`<div class="row"><label class="fld" style="flex:1"><span>左 (分钟)</span><input type="number" id="f_l"></label><label class="fld" style="flex:1"><span>右 (分钟)</span><input type="number" id="f_r"></label></div>`;
+  else if(t==='feed_solid')h=`<label class="fld"><span>食物</span><input type="text" id="f_food" placeholder="例如 蛋黄+米粉"></label><label class="fld"><span>量 ml(可选)</span><input type="number" id="f_ml"></label>`;
+  else if(t==='sleep')h=`<label class="fld"><span>时长 (分钟)</span><input type="number" id="f_dur" placeholder="例如 90"></label>`;
+  else if(t==='walk')h=`<label class="fld"><span>时长 (分钟)</span><input type="number" id="f_dur"></label>`;
+  else if(t==='growth')h=`<div class="row"><label class="fld" style="flex:1"><span>体重 kg</span><input type="number" step="0.01" id="f_w"></label><label class="fld" style="flex:1"><span>身高 cm</span><input type="number" step="0.1" id="f_h"></label></div>`;
+  else if(t.startsWith('diaper')||t==='vitamin')h=`<label class="fld"><span>备注(可选)</span><input type="text" id="f_note"></label>`;
+  document.getElementById('rfields').innerHTML=h;
+}
+function gv(id){const e=document.getElementById(id);return e?e.value:'';}
+function saveRec(){const t=document.getElementById('rty').value;const dt=document.getElementById('rdt').value;
+  if(!dt){alert('请选时间');return;}
+  const r={id:uid(),dt,type:t};
+  if(t==='feed_formula')r.ml=+gv('f_ml')||0;
+  if(t==='feed_breast'){r.leftMin=+gv('f_l')||0;r.rightMin=+gv('f_r')||0;}
+  if(t==='feed_solid'){r.food=gv('f_food');r.ml=+gv('f_ml')||null;}
+  if(t==='sleep'||t==='walk')r.durationMin=+gv('f_dur')||0;
+  if(t==='growth'){r.weightKg=+gv('f_w')||null;r.heightCm=+gv('f_h')||null;}
+  if(gv('f_note'))r.note=gv('f_note');
+  DB.records.push(r);save();closeSheet();renderRec();
+}
+
+/* ============ Piyolog 导入 ============ */
+function importSheet(){
+  openSheet(`<h3>⬇️ 导入记录<span class="x" onclick="closeSheet()">×</span></h3>
+   <div class="small muted">支持 <b>Piyolog(Piyo日志)</b> 导出的文本(.txt)，自动识别母乳/配方奶/辅食/睡眠/尿布/体重等。也可恢复本工具的 JSON 备份。</div>
+   <label class="fld" style="margin-top:10px"><span>① 选择文件</span><input type="file" id="impf" accept=".txt,.json" onchange="impFile(event)"></label>
+   <div class="small muted" style="text-align:center;margin:4px 0">— 或 —</div>
+   <label class="fld"><span>② 直接粘贴 Piyolog 文本</span><textarea id="imptx" placeholder="把导出内容整段粘贴到这里…"></textarea></label>
+   <div id="imppv"></div>
+   <div class="row" style="margin-top:10px"><button class="btn" onclick="doImportText()">解析并预览</button><button class="btn ghost" onclick="closeSheet()">取消</button></div>`);
+}
+function impFile(e){const f=e.target.files[0];if(!f)return;const rd=new FileReader();
+  rd.onload=()=>{const txt=rd.result;
+    if(f.name.endsWith('.json')){try{const d=JSON.parse(txt);restoreBackup(d);}catch(err){alert('JSON 解析失败');}return;}
+    document.getElementById('imptx').value=txt;doImportText();};
+  rd.readAsText(f);}
+function parseDur(s){let h=0,m=0;const hm=s.match(/(\d+)\s*(?:小时|時間|时)/);if(hm)h=+hm[1];const mm=s.match(/(\d+)\s*分/);if(mm)m=+mm[1];return h*60+m;}
+function toISO(y,mo,d,hh,mm){return `${y}-${pad(mo)}-${pad(d)}T${pad(hh)}:${pad(mm)}`;}
+function parsePiyolog(txt){
+  const lines=txt.split(/\r?\n/);let cy,cmo,cd;const out=[];
+  const dre=/(\d{4})年(\d{1,2})月(\d{1,2})日/;
+  const ere=/^(\d{1,2}):(\d{2})\s+(.+)$/;
+  for(let raw of lines){
+    const line=raw.trim();
+    const dm=line.match(dre);if(dm){cy=+dm[1];cmo=+dm[2];cd=+dm[3];continue;}
+    if(/共\s/.test(line))continue; // 汇总行
+    const em=line.match(ere);if(!em||!cy)continue;
+    const hh=+em[1],mm=+em[2],c=em[3].trim();
+    const iso=toISO(cy,cmo,cd,hh,mm);let r=null;
+    if(c.startsWith('起床')){const dur=parseDur(c);if(dur>0){const end=new Date(cy,cmo-1,cd,hh,mm);const st=new Date(end.getTime()-dur*60000);
+        r={dt:toISO(st.getFullYear(),st.getMonth()+1,st.getDate(),st.getHours(),st.getMinutes()),type:'sleep',durationMin:dur};}}
+    else if(c.startsWith('睡觉')){r=null;}
+    else if(c.startsWith('母乳')){let l=0,rr=0;const lm=c.match(/左\s*(\d+)\s*分/);if(lm)l=+lm[1];const rm=c.match(/右\s*(\d+)\s*分/);if(rm)rr=+rm[1];r={dt:iso,type:'feed_breast',leftMin:l,rightMin:rr};}
+    else if(c.startsWith('配方奶')||c.startsWith('奶粉')){const m=c.match(/(\d+)\s*ml/i);r={dt:iso,type:'feed_formula',ml:m?+m[1]:0};}
+    else if(c.startsWith('断奶食品')||c.startsWith('辅食')){let food=c.replace(/^断奶食品|^辅食/,'').trim();const m=food.match(/(\d+)\s*ml/i);r={dt:iso,type:'feed_solid',food:food,ml:m?+m[1]:null};}
+    else if(c.includes('维生素')||c.includes('VD')||c.includes('AD')){r={dt:iso,type:'vitamin',note:c};}
+    else if(c.startsWith('散步')||c.startsWith('户外')){r={dt:iso,type:'walk',durationMin:parseDur(c)};}
+    else if(c.startsWith('便便')){const n=c.match(/[（(](.+?)[）)]/);r={dt:iso,type:'diaper_poop',note:n?n[1]:''};}
+    else if(c.startsWith('尿尿')||c.startsWith('小便')){const n=c.match(/[（(](.+?)[）)]/);r={dt:iso,type:'diaper_pee',note:n?n[1]:''};}
+    else if(c.startsWith('洗澡')){r={dt:iso,type:'bath'};}
+    else if(c.startsWith('体重')){const m=c.match(/([\d.]+)\s*kg/i);const note=c.replace(/体重\s*[\d.]+\s*kg/i,'').trim();r={dt:iso,type:'growth',weightKg:m?+m[1]:null,note};}
+    else if(c.startsWith('身高')){const m=c.match(/([\d.]+)\s*cm/i);r={dt:iso,type:'growth',heightCm:m?+m[1]:null};}
+    if(r)out.push(r);
+  }
+  return out;
+}
+let pendingImport=null;
+function doImportText(){const txt=document.getElementById('imptx').value;
+  if(!txt.trim()){alert('请粘贴内容或选择文件');return;}
+  const parsed=parsePiyolog(txt);
+  if(!parsed.length){document.getElementById('imppv').innerHTML=`<div class="note-warn">没识别到记录。确认是 Piyolog 导出的文本？</div>`;return;}
+  // dedupe against existing
+  const sig=r=>[r.dt,r.type,r.ml||'',r.leftMin||'',r.rightMin||'',r.food||'',r.durationMin||'',r.weightKg||''].join('|');
+  const have=new Set(DB.records.map(sig));
+  const fresh=parsed.filter(r=>!have.has(sig(r)));
+  pendingImport=fresh;
+  const cnt={};parsed.forEach(r=>cnt[r.type]=(cnt[r.type]||0)+1);
+  const days=new Set(parsed.map(r=>dkey(r.dt)));
+  document.getElementById('imppv').innerHTML=`<div class="card" style="margin-top:10px;box-shadow:none;border:1px solid var(--line)">
+    <b>识别成功 ✅</b><div class="small" style="margin-top:4px">共 ${parsed.length} 条，覆盖 ${days.size} 天。其中新记录 <b>${fresh.length}</b> 条（已自动跳过 ${parsed.length-fresh.length} 条重复）。</div>
+    <div class="small muted" style="margin-top:6px">${Object.entries(cnt).map(([k,v])=>`${(RTYPES[k]||RTYPES.other).i}${(RTYPES[k]||RTYPES.other).n} ${v}`).join(' · ')}</div>
+    <button class="btn" style="margin-top:10px" onclick="confirmImport()">确认导入 ${fresh.length} 条</button></div>`;
+}
+function confirmImport(){if(!pendingImport)return;pendingImport.forEach(r=>{r.id=uid();DB.records.push(r);});save();pendingImport=null;closeSheet();renderRec();renderHeader();
+  alert('导入完成 🎉');}
+
+/* ============ 导出/备份 ============ */
+function download(name,content,type){const b=new Blob([content],{type});const u=URL.createObjectURL(b);const a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+function exportJSON(){download(`悠悠成长备份_${todayStr()}.json`,JSON.stringify(DB,null,2),'application/json');}
+function exportCSV(){const rows=[['日期时间','类型','奶量ml','母乳左分','母乳右分','辅食','睡眠分','体重kg','身高cm','备注']];
+  DB.records.slice().sort((a,b)=>a.dt.localeCompare(b.dt)).forEach(r=>rows.push([r.dt,(RTYPES[r.type]||RTYPES.other).n,r.ml||'',r.leftMin||'',r.rightMin||'',r.food||'',r.durationMin||'',r.weightKg||'',r.heightCm||'',(r.note||'').replace(/,/g,'，')]));
+  download(`悠悠记录_${todayStr()}.csv`,'﻿'+rows.map(r=>r.join(',')).join('\n'),'text/csv');}
+function restoreBackup(d){if(!d||!d.profile){alert('不是有效备份文件');return;}
+  if(confirm('恢复备份将覆盖当前所有数据，确定？')){DB=d;DB.skills=DB.skills||{};DB.records=DB.records||[];DB.pref=DB.pref||{wake:'07:00'};save();closeSheet();renderHeader();go(CUR);alert('已恢复 ✅');}}
+
+/* ============ 设置 ============ */
+function openSettings(){
+  openSheet(`<h3>⚙️ 设置<span class="x" onclick="closeSheet()">×</span></h3>
+   <label class="fld"><span>宝宝名字</span><input type="text" id="s_name" value="${DB.profile.name||''}"></label>
+   <label class="fld"><span>出生日期</span><input type="date" id="s_birth" value="${DB.profile.birth||''}"></label>
+   <div class="row"><button class="btn" onclick="DB.profile.name=gv('s_name');DB.profile.birth=gv('s_birth');save();closeSheet();renderHeader();go(CUR)">保存</button></div>
+   <div class="divider"></div>
+   <h3 style="font-size:14px">数据</h3>
+   <div class="row"><button class="btn sm sec" onclick="exportJSON()">导出备份</button>
+    <button class="btn sm sec" onclick="importSheet()">导入/恢复</button>
+    <button class="btn sm ghost" onclick="resetAll()">清空数据</button></div>
+   <div class="note-warn">所有数据仅保存在本设备浏览器(localStorage)，清除浏览器缓存会丢失，请定期导出备份。</div>`);
+}
+function resetAll(){if(confirm('确定清空全部数据（含记录与技能树标记）？建议先导出备份。')){localStorage.removeItem(LS);DB=load();save();closeSheet();renderHeader();go('day');}}
+
+/* ============ 弹窗 ============ */
+function openSheet(html){document.getElementById('sheet').innerHTML=html;document.getElementById('mask').classList.add('on');}
+function closeSheet(){document.getElementById('mask').classList.remove('on');}
+document.getElementById('mask').addEventListener('click',e=>{if(e.target.id==='mask')closeSheet();});
+
+/* ============ 启动 ============ */
+renderHeader();renderDay();
+</script>
+<script>
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
