@@ -643,10 +643,10 @@ function renderDay(){
         ${t.k==='meal'?`<span class="skref" style="background:var(--p3b);color:var(--p3)" onclick="go('food')">🥣 辅食</span>`:''}
         </div>
         ${t.done?`<div class="evchk on" onclick="undoSlot(${t.i})">✓</div>`:`<button class="cbtn" onclick="completeSlot(${t.i})">完成</button>`}</div>`;
-    }else{const r=it.r;
+    }else{const r=it.r;const gap=gapSince(r);
       h+=`<div class="ev"><div class="tm">${dtime(r.dt)}</div>
         <div class="dot ${recCls(r)}">${(RTYPES[r.type]||RTYPES.other).i}</div>
-        <div class="bd"><div class="ti" style="font-weight:500">${recDesc(r)}</div><div class="de" style="color:var(--muted)">📌 已记录</div></div>
+        <div class="bd" onclick="recDetail('${r.id}')" style="cursor:pointer"><div class="ti" style="font-weight:500">${recDesc(r)}</div><div class="de" style="color:var(--muted)">${gap||'📌 已记录'}</div></div>
         <div class="evrm" onclick="delRec('${r.id}')">✕</div></div>`;
     }
   });
@@ -664,16 +664,34 @@ function renderDay(){
   h+=`</div>`;
   document.getElementById('view-day').innerHTML=h;
 }
+function napMinOnDay(day){
+  const [nsH,nsM]=(DB.pref.napStart||'06:45').split(':').map(Number);const [neH,neM]=(DB.pref.napEnd||'19:00').split(':').map(Number);
+  const w0=new Date(day+'T00:00:00').getTime()+(nsH*60+nsM)*60000;const w1=new Date(day+'T00:00:00').getTime()+(neH*60+neM)*60000;
+  let t=0;DB.records.forEach(r=>{if(r.type!=='sleep'||!r.durationMin)return;const st=new Date(r.dt).getTime();const en=st+r.durationMin*60000;
+    const ov=Math.min(en,w1)-Math.max(st,w0);if(ov>0)t+=ov/60000;});return Math.round(t);}
 function dayRecordsHTML(date){
   const recs=DB.records.filter(r=>dkey(r.dt)===date).sort((x,y)=>x.dt.localeCompare(y.dt));
-  let ml=0,lmin=0,rmin=0,solid=0,pee=0,poop=0;const sleep=sleepMinOnDay(date);
-  recs.forEach(r=>{if(r.type==='feed_formula'||r.type==='feed_bottle')ml+=r.ml||0;if(r.type==='feed_breast'){lmin+=r.leftMin||0;rmin+=r.rightMin||0;}if(['feed_solid','meal_main','snack'].includes(r.type))solid++;if(r.type==='diaper_pee')pee++;if(r.type==='diaper_poop')poop++;});
-  const sum=[ml?`奶${ml}ml`:'',(lmin+rmin)?`母乳${lmin+rmin}分`:'',solid?`辅食${solid}`:'',sleep?`睡${fmtDur(sleep)}`:'',pee?`尿${pee}`:'',poop?`💩${poop}`:''].filter(Boolean).join(' · ');
+  let ml=0,lmin=0,rmin=0,solid=0,pee=0,poop=0;const sleep=sleepMinOnDay(date),nap=napMinOnDay(date);
+  recs.forEach(r=>{if(r.type==='feed_formula'||r.type==='feed_bottle')ml+=r.ml||0;if(r.type==='feed_breast'){lmin+=r.leftMin||0;rmin+=r.rightMin||0;}if(['feed_solid','meal_main','snack'].includes(r.type))solid++;if(r.type==='diaper_pee'||r.type==='diaper_both')pee++;if(r.type==='diaper_poop'||r.type==='diaper_both')poop++;});
+  const sum=[(lmin+rmin)?`🤱${lmin}分/${rmin}分`:'',ml?`🍼${ml}ml`:'',solid?`🥣${solid}次`:'',sleep?`😴${fmtDur(sleep)}`:'',nap?`<span style="color:var(--warm)">🌞小觉${fmtDur(nap)}</span>`:'',pee?`💦${pee}`:'',poop?`💩${poop}`:''].filter(Boolean).join(' · ');
+  /* 下次喂奶提醒 */
+  let nf='';
+  if(date===todayStr()){
+    const milks=DB.records.filter(r=>['feed_breast','feed_formula','feed_bottle'].includes(r.type)).sort((a,b)=>a.dt.localeCompare(b.dt));
+    if(milks.length){const last=milks[milks.length-1];const ivH=DB.pref.feedIntervalH||3;
+      const nx=new Date(new Date(last.dt).getTime()+ivH*3600000);const diff=Math.round((nx-new Date())/60000);
+      if(diff>-720)nf=`<div class="note-warn" style="margin:6px 0">🔔 下次喂奶时间 <b>${pad(nx.getHours())}:${pad(nx.getMinutes())}</b>（${diff>=0?fmtDur(diff)+'后':'已过 '+fmtDur(-diff)}）<span class="muted">· 间隔${ivH}h</span></div>`;}
+  }
+  const open=openSleepRec();
   let h=`<div class="card"><div class="row" style="justify-content:space-between"><h2>🍼 记录 · 今日汇总</h2>
     <div class="row"><button class="btn sm" onclick="addRec()">＋ 记一笔</button><button class="btn sm sec" onclick="feedTimer()">⏱</button><button class="btn sm sec" onclick="importSheet()">⬇️</button></div></div>
-    <div class="qbar">${['feed_breast','feed_formula','feed_solid','sleep','diaper_pee','diaper_poop','vitamin','temp','growth'].map(k=>`<button onclick="addRec('${k}')"><span class="qi">${RTYPES[k].i}</span>${RTYPES[k].n}</button>`).join('')}</div>
-    <div class="small" style="margin:2px 0 4px;font-weight:600">${sum||'今天还没有记录'}</div>
-    <div class="small muted">在这里快速补记额外事件（便便/体温/额外喂奶等）；所有记录都会出现在上方时间轴对应时刻，点 ✕ 可删除。</div>`;
+    <div class="qbar">
+      ${open?`<button onclick="quickWake()" style="background:var(--p2b,#ffe)"><span class="qi">🌅</span>起床</button>`:`<button onclick="quickSleep()"><span class="qi">😴</span>睡觉</button>`}
+      ${['feed_breast','feed_formula','feed_pump','feed_bottle','feed_solid','drink','snack','meal_main','diaper_pee','diaper_poop','diaper_both','vitd3','vitad','probiotic','walk','bath','temp','growth','med','achievement'].map(k=>`<button onclick="addRec('${k}')"><span class="qi">${RTYPES[k].i}</span>${RTYPES[k].n}</button>`).join('')}
+      <button onclick="addRec()"><span class="qi">➕</span>更多</button></div>
+    ${open?`<div class="small" style="color:var(--p4);font-weight:600">😴 ${dtime(open.dt)} 入睡，睡眠进行中 · 醒了点「起床」</div>`:''}
+    <div class="small" style="margin:2px 0 4px;font-weight:600">${sum||'今天还没有记录'}</div>${nf}
+    <div class="small muted">点记录可查看详情/编辑；记录会出现在上方时间轴对应时刻。</div>`;
   h+=`</div>`;return h;
 }
 function slotDefaultDur(times,i){for(let j=i+1;j<times.length;j++){if(times[j].k==='wake')return Math.max(15,Math.round(times[j].min-times[i].min));}return 90;}
@@ -765,9 +783,13 @@ const RTYPES={
   snack:{i:'🍪',n:'点心',grp:'喂养',f:'food'},
   drink:{i:'🧃',n:'饮料',grp:'喂养',f:'ml'},
   water:{i:'💧',n:'喝水',grp:'喂养',f:'ml'},
-  diaper_pee:{i:'💦',n:'尿尿',grp:'排泄',f:'text'},
-  diaper_poop:{i:'💩',n:'便便',grp:'排泄',f:'text'},
+  diaper_pee:{i:'💦',n:'尿尿',grp:'排泄',f:'pp'},
+  diaper_poop:{i:'💩',n:'便便',grp:'排泄',f:'poop'},
+  diaper_both:{i:'💦💩',n:'两项',grp:'排泄',f:'poop'},
   sleep:{i:'😴',n:'睡眠',grp:'睡眠',f:'dur'},
+  vitd3:{i:'⭐',n:'维生素D3',grp:'营养',f:'pp'},
+  vitad:{i:'🌟',n:'维生素AD',grp:'营养',f:'pp'},
+  probiotic:{i:'🍀',n:'益生菌',grp:'营养',f:'pp'},
   vitamin:{i:'💊',n:'维生素/益生菌',grp:'营养',f:'text'},
   walk:{i:'🌳',n:'户外散步',grp:'活动',f:'dur'},
   swim:{i:'🏊',n:'游泳',grp:'活动',f:'dur'},
@@ -793,10 +815,11 @@ const HEALTHT=['cough','vomit','rash','injury','med','hospital','vaccine'];
 let recFilter='all';
 function recDesc(r){
   const T=RTYPES[r.type]||RTYPES.other;
-  if(r.type==='feed_breast')return`母乳 左${r.leftMin||0}分 右${r.rightMin||0}分`;
+  if(r.type==='feed_breast')return`母乳 左${r.leftMin||0}分 → 右${r.rightMin||0}分`;
+  if(r.type==='diaper_poop'||r.type==='diaper_both')return`${T.n}${r.amount?` 量:${r.amount}`:''}${r.hardness?` ${r.hardness}`:''}${r.color?` ${r.color}色`:''}`;
   if(['feed_formula','feed_pump','feed_bottle','drink','water'].includes(r.type))return`${T.n} <b>${r.ml||0}ml</b>`;
   if(['feed_solid','meal_main','snack'].includes(r.type))return`${T.n} ${r.food||''}${r.ml?` <small>${r.ml}ml</small>`:''}`;
-  if(r.type==='sleep')return`睡眠 ${fmtDur(r.durationMin)}`;
+  if(r.type==='sleep')return r.durationMin==null?`😴 睡觉 <small>进行中…</small>`:`睡眠 ${fmtDur(r.durationMin)}`;
   if(['walk','swim','bigmotor'].includes(r.type))return`${T.n} ${r.durationMin?fmtDur(r.durationMin):''}`;
   if(r.type==='temp')return`体温 <b>${r.tempC||''}℃</b>`;
   if(r.type==='growth')return[r.weightKg?`体重 ${r.weightKg}kg`:'',r.heightCm?`身高 ${r.heightCm}cm`:'',r.headCm?`头围 ${r.headCm}cm`:'',r.chestCm?`胸围 ${r.chestCm}cm`:'',r.footCm?`脚长 ${r.footCm}cm`:'',r.note||''].filter(Boolean).join(' ');
@@ -841,42 +864,96 @@ function renderRec(){
 }
 function fmtDay(d){const dt=new Date(d+'T00:00:00');const w='日一二三四五六'[dt.getDay()];const t=todayStr();
   return `${dt.getMonth()+1}月${dt.getDate()}日 周${w}`+(d===t?' · 今天':'');}
-function delRec(id){if(confirm('删除这条记录？')){DB.records=DB.records.filter(r=>r.id!==id);save();renderDay();}}
+function delRec(id){if(confirm('删除这条记录？')){DB.records=DB.records.filter(r=>r.id!==id);save();closeSheet();rerender();}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 
-function addRec(pre){
-  const now=new Date();const dl=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes());
-  const groups={};Object.entries(RTYPES).forEach(([k,v])=>{if(k==='other')return;(groups[v.grp]=groups[v.grp]||[]).push([k,v]);});
+function nowDT(){const n=new Date();return n.getFullYear()+'-'+pad(n.getMonth()+1)+'-'+pad(n.getDate())+'T'+pad(n.getHours())+':'+pad(n.getMinutes());}
+function addRec(pre,editId){
+  const dl=nowDT();EDIT_ID=editId||null;
+  const groups={};Object.entries(RTYPES).forEach(([k,v])=>{if(k==='other'||k==='vitamin')return;(groups[v.grp]=groups[v.grp]||[]).push([k,v]);});
   const opts=Object.entries(groups).map(([g,arr])=>`<optgroup label="${g}">${arr.map(([k,v])=>`<option value="${k}" ${k===pre?'selected':''}>${v.i} ${v.n}</option>`).join('')}</optgroup>`).join('');
-  openSheet(`<h3>＋ 记一笔<span class="x" onclick="closeSheet()">×</span></h3>
+  openSheet(`<h3>${editId?'✏️ 编辑记录':'＋ 记一笔'}<span class="x" onclick="EDIT_ID=null;closeSheet()">×</span></h3>
    <label class="fld"><span>类型</span><select id="rty" onchange="recFields()">${opts}</select></label>
    <label class="fld"><span>时间</span><input type="datetime-local" id="rdt" value="${dl}"></label>
    <div id="rfields"></div>
-   <div class="row" style="margin-top:12px"><button class="btn" onclick="saveRec()">保存</button><button class="btn ghost" onclick="closeSheet()">取消</button></div>`);
+   <div class="row" style="margin-top:12px"><button class="btn" onclick="saveRec()">保存</button><button class="btn ghost" onclick="EDIT_ID=null;closeSheet()">取消</button></div>`);
   recFields();
+  if(editId){const r=DB.records.find(x=>x.id===editId);
+    if(r){const ty=document.getElementById('rty');if([...ty.options].some(o=>o.value===r.type))ty.value=r.type;recFields();
+      document.getElementById('rdt').value=r.dt;
+      const st=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null)e.value=v;};
+      st('f_ml',r.ml);st('f_l',r.leftMin);st('f_r',r.rightMin);st('f_order',r.order);st('f_food',r.food);st('f_dur',r.durationMin);
+      st('f_temp',r.tempC);st('f_w',r.weightKg);st('f_h',r.heightCm);st('f_head',r.headCm);st('f_chest',r.chestCm);st('f_foot',r.footCm);
+      st('f_amt',r.amount);st('f_hard',r.hardness);st('f_color',r.color);st('f_note',r.note);}}
 }
+/* ---- 睡觉/起床 配对 ---- */
+function openSleepRec(){return DB.records.filter(r=>r.type==='sleep'&&r.durationMin==null).sort((a,b)=>b.dt.localeCompare(a.dt))[0];}
+function quickSleep(){const o=openSleepRec();
+  if(o){alert('已有进行中的睡眠（'+dtime(o.dt)+' 入睡）。宝宝醒了请点「起床」。');return;}
+  openSheet(`<h3>😴 睡觉<span class="x" onclick="closeSheet()">×</span></h3>
+   <label class="fld"><span>入睡时间</span><input type="datetime-local" id="qs_dt" value="${nowDT()}"></label>
+   <div class="small muted">宝宝醒来后点「起床」，自动算出本次睡眠时长。</div>
+   <div class="row" style="margin-top:10px"><button class="btn" onclick="startSleep()">保存</button><button class="btn ghost" onclick="closeSheet()">取消</button></div>`);}
+function startSleep(){const dt=gv('qs_dt');if(!dt){alert('请选时间');return;}
+  DB.records.push({id:uid(),dt,type:'sleep',durationMin:null,_by:CLOUD?CLOUD.member_id:null});save();closeSheet();rerender();}
+function quickWake(){const o=openSleepRec();
+  if(!o){alert('没有进行中的睡眠。可先点「睡觉」补一条入睡时间，或用「记一笔→睡眠」直接填时长。');return;}
+  openSheet(`<h3>🌅 起床<span class="x" onclick="closeSheet()">×</span></h3>
+   <div class="small muted">${o.dt.replace('T',' ')} 入睡</div>
+   <label class="fld"><span>醒来时间</span><input type="datetime-local" id="qw_dt" value="${nowDT()}"></label>
+   <div class="row" style="margin-top:10px"><button class="btn" onclick="endSleep('${o.id}')">保存</button><button class="btn ghost" onclick="closeSheet()">取消</button></div>`);}
+function endSleep(id){const r=DB.records.find(x=>x.id===id);const dt=gv('qw_dt');if(!r||!dt)return;
+  const dur=Math.round((new Date(dt)-new Date(r.dt))/60000);
+  if(dur<=0||dur>1440){alert('醒来时间需晚于入睡时间且不超过 24 小时');return;}
+  r.durationMin=dur;save();closeSheet();rerender();}
+/* ---- 记录详情 ---- */
+function recDetail(id){const r=DB.records.find(x=>x.id===id);if(!r)return;const T=RTYPES[r.type]||RTYPES.other;
+  const by=(r._by&&typeof MEMBERS!=='undefined'&&MEMBERS[r._by])?MEMBERS[r._by]:(r._by?'家人':'—');
+  openSheet(`<h3>${T.i} ${T.n}<span class="x" onclick="closeSheet()">×</span></h3>
+   <div style="font-size:15px;margin:6px 0">${recDesc(r)}</div>
+   <div class="small muted">时间：${r.dt.replace('T',' ')}${r.order?`<br>顺序：${r.order}`:''}${r.note?`<br>备注：${r.note}`:''}<br>记录人：${by}</div>
+   <div class="row" style="margin-top:14px"><button class="btn sm" onclick="closeSheet();addRec(null,'${id}')">编辑</button>
+    <button class="btn sm ghost" onclick="delRec('${id}')">删除</button>
+    <button class="btn sm sec" onclick="closeSheet()">关闭</button></div>`);}
+/* ---- 智能间隔 ---- */
+function gapCat(t){return ['feed_breast','feed_formula','feed_bottle'].includes(t)?'milk':t==='feed_solid'?'solid':(t==='diaper_poop'||t==='diaper_both')?'poop':null;}
+function gapSince(r){const c=gapCat(r.type);if(!c)return'';
+  let best=null;DB.records.forEach(x=>{if(x.id!==r.id&&gapCat(x.type)===c&&x.dt<r.dt&&(!best||x.dt>best.dt))best=x;});
+  if(!best)return'';const m=Math.round((new Date(r.dt)-new Date(best.dt))/60000);
+  if(m<=0||m>2880)return'';return `距上次${{milk:'喂奶',solid:'辅食',poop:'便便'}[c]} ${fmtDur(m)}`;}
 function recFields(){const t=document.getElementById('rty').value;const f=(RTYPES[t]||RTYPES.other).f;let h='';
   if(f==='ml')h=`<label class="fld"><span>量 ml</span><input type="number" id="f_ml" placeholder="例如 100"></label>`;
-  else if(f==='breast')h=`<div class="row"><label class="fld" style="flex:1"><span>左 (分钟)</span><input type="number" id="f_l"></label><label class="fld" style="flex:1"><span>右 (分钟)</span><input type="number" id="f_r"></label></div>`;
+  else if(f==='breast')h=`<div class="row"><label class="fld" style="flex:1"><span>左 (分钟)</span><input type="number" id="f_l"></label><label class="fld" style="flex:1"><span>右 (分钟)</span><input type="number" id="f_r"></label></div>
+   <label class="fld"><span>顺序</span><select id="f_order"><option value="">没有顺序</option><option value="从左边">从左边</option><option value="从右边">从右边</option></select></label>`;
+  else if(f==='poop')h=`<div class="row"><label class="fld" style="flex:1"><span>量</span><select id="f_amt"><option value=""></option><option>一点点</option><option>少</option><option>通常</option><option>大</option></select></label>
+    <label class="fld" style="flex:1"><span>硬度</span><select id="f_hard"><option value=""></option><option>泻</option><option>软</option><option>通常</option><option>硬</option></select></label></div>
+   <label class="fld"><span>颜色</span><select id="f_color"><option value=""></option><option>白</option><option>黄</option><option>橙</option><option>茶</option><option>绿</option><option>红</option><option>黑</option></select></label>`;
+  else if(f==='pp')h='';
   else if(f==='food')h=`<label class="fld"><span>内容</span><input type="text" id="f_food" placeholder="例如 蛋黄+米粉"></label><label class="fld"><span>量 ml(可选)</span><input type="number" id="f_ml"></label>`;
   else if(f==='dur')h=`<label class="fld"><span>时长 (分钟)</span><input type="number" id="f_dur" placeholder="例如 90"></label>`;
   else if(f==='temp')h=`<label class="fld"><span>体温 ℃</span><input type="number" step="0.1" id="f_temp" placeholder="例如 36.8"></label>`;
   else if(f==='measure')h=`<div class="row"><label class="fld" style="flex:1"><span>体重 kg</span><input type="number" step="0.01" id="f_w"></label><label class="fld" style="flex:1"><span>身高 cm</span><input type="number" step="0.1" id="f_h"></label></div><div class="row"><label class="fld" style="flex:1"><span>头围 cm</span><input type="number" step="0.1" id="f_head"></label><label class="fld" style="flex:1"><span>胸围 cm</span><input type="number" step="0.1" id="f_chest"></label></div><label class="fld"><span>脚长 cm</span><input type="number" step="0.1" id="f_foot"></label>`;
   else if(f==='text')h=`<label class="fld"><span>备注/内容(可选)</span><input type="text" id="f_note"></label>`;
+  if(f!=='text')h+=`<label class="fld"><span>备注(可选)</span><input type="text" id="f_note"></label>`;
   document.getElementById('rfields').innerHTML=h;
 }
 function gv(id){const e=document.getElementById(id);return e?e.value:'';}
+let EDIT_ID=null;
 function saveRec(){const t=document.getElementById('rty').value;const dt=gv('rdt');
   if(!dt){alert('请选时间');return;}
-  const f=(RTYPES[t]||RTYPES.other).f;const r={id:uid(),dt,type:t};
+  const f=(RTYPES[t]||RTYPES.other).f;const r={id:uid(),dt,type:t,_by:(typeof CLOUD!=='undefined'&&CLOUD)?CLOUD.member_id:null};
   if(f==='ml')r.ml=+gv('f_ml')||0;
-  else if(f==='breast'){r.leftMin=+gv('f_l')||0;r.rightMin=+gv('f_r')||0;}
+  else if(f==='breast'){r.leftMin=+gv('f_l')||0;r.rightMin=+gv('f_r')||0;if(gv('f_order'))r.order=gv('f_order');}
   else if(f==='food'){r.food=gv('f_food');r.ml=+gv('f_ml')||null;}
   else if(f==='dur')r.durationMin=+gv('f_dur')||0;
   else if(f==='temp')r.tempC=+gv('f_temp')||null;
   else if(f==='measure'){r.weightKg=+gv('f_w')||null;r.heightCm=+gv('f_h')||null;r.headCm=+gv('f_head')||null;r.chestCm=+gv('f_chest')||null;r.footCm=+gv('f_foot')||null;}
-  else if(f==='text'){if(gv('f_note'))r.note=gv('f_note');}
-  DB.records.push(r);save();closeSheet();renderDay();
+  else if(f==='poop'){if(gv('f_amt'))r.amount=gv('f_amt');if(gv('f_hard'))r.hardness=gv('f_hard');if(gv('f_color'))r.color=gv('f_color');}
+  if(gv('f_note'))r.note=gv('f_note');
+  if(EDIT_ID){const i=DB.records.findIndex(x=>x.id===EDIT_ID);
+    if(i>=0){r.id=EDIT_ID;r._by=DB.records[i]._by||r._by;DB.records[i]=r;}EDIT_ID=null;}
+  else DB.records.push(r);
+  save();closeSheet();rerender();
 }
 
 /* ============ Piyolog 导入 ============ */
@@ -982,7 +1059,10 @@ function openSettings(){
    <label class="fld"><span>宝宝名字</span><input type="text" id="s_name" value="${DB.profile.name||''}"></label>
    <label class="fld"><span>出生日期</span><input type="date" id="s_birth" value="${DB.profile.birth||''}"></label>
    <label class="fld"><span>性别（用于生长曲线）</span><select id="s_sex"><option value="boy"${DB.profile.sex!=='girl'?' selected':''}>男宝</option><option value="girl"${DB.profile.sex==='girl'?' selected':''}>女宝</option></select></label>
-   <div class="row"><button class="btn" onclick="DB.profile.name=gv('s_name');DB.profile.birth=gv('s_birth');DB.profile.sex=gv('s_sex');save();closeSheet();renderHeader();go(CUR)">保存</button></div>
+   <div class="row"><label class="fld" style="flex:1"><span>喂奶提醒间隔(小时)</span><input type="number" step="0.5" id="s_iv" value="${DB.pref.feedIntervalH||3}"></label></div>
+   <div class="row"><label class="fld" style="flex:1"><span>白天小觉·开始</span><input type="time" id="s_ns" value="${DB.pref.napStart||'06:45'}"></label>
+    <label class="fld" style="flex:1"><span>白天小觉·结束</span><input type="time" id="s_ne" value="${DB.pref.napEnd||'19:00'}"></label></div>
+   <div class="row"><button class="btn" onclick="DB.profile.name=gv('s_name');DB.profile.birth=gv('s_birth');DB.profile.sex=gv('s_sex');DB.pref.feedIntervalH=+gv('s_iv')||3;DB.pref.napStart=gv('s_ns')||'06:45';DB.pref.napEnd=gv('s_ne')||'19:00';save();closeSheet();renderHeader();go(CUR)">保存</button></div>
    <div class="divider"></div>
    <h3 style="font-size:14px">☁️ 家庭共享</h3>
    ${CLOUD?`<div class="small">邀请码 <b style="font-size:17px;letter-spacing:3px">${CLOUD.invite_code||'—'}</b> · 我是 ${CLOUD.display_name}</div>
