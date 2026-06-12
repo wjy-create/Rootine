@@ -155,6 +155,8 @@ textarea{min-height:120px;resize:vertical}
 .nextlbl{font-size:10px;background:var(--warm);color:#fff;padding:1px 6px;border-radius:8px;font-weight:600}
 .cbtn{align-self:center;flex-shrink:0;background:var(--p1);color:#fff;font-size:12.5px;font-weight:600;padding:6px 13px;border-radius:14px}
 .evrm{align-self:center;flex-shrink:0;color:var(--p2);font-size:13px;opacity:.55;width:26px;text-align:center;cursor:pointer}
+#qfix{position:fixed;left:0;right:0;bottom:0;background:var(--card,#fffdf8);border-top:1px solid #eee2d4;box-shadow:0 -4px 16px rgba(0,0,0,.08);padding:4px 8px calc(5px + env(safe-area-inset-bottom));z-index:30;max-width:880px;margin:0 auto}
+#qfix .qbar{margin:0;padding:4px 0 2px}
 @media(min-width:560px){.sheet{border-radius:20px;margin-bottom:auto;margin-top:auto}.mask{align-items:center}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -181,6 +183,7 @@ textarea{min-height:120px;resize:vertical}
   <div class="foot">🌱 <b>Rootine</b> · 每一天的节奏，扎下成长的根<br>纯本地存储，数据只保存在此设备浏览器中；建议定期在 ⚙️ 设置里导出备份。<br>本工具内容为科学育儿参考，不替代儿科医生建议。</div>
 </div>
 
+<div id="qfix" style="display:none"></div>
 <div class="mask" id="mask"><div class="sheet" id="sheet"></div></div>
 
 <script>
@@ -571,6 +574,7 @@ const KICON={sleep:'😴',feed:'🍼',play:'🧸',meal:'🥣',care:'🛁',out:'�
 /* ============ 视图切换 ============ */
 let CUR='day';
 function go(v){CUR=v;['day','skill','food','growth','review'].forEach(x=>{document.getElementById('view-'+x).style.display=x===v?'block':'none';document.getElementById('tab-'+x).classList.toggle('on',x===v);});
+  const qf=document.getElementById('qfix');if(qf)qf.style.display=v==='day'?'block':'none';
   if(v==='day')renderDay();if(v==='skill')renderSkill();if(v==='food')renderFood();if(v==='growth')renderGrowth();if(v==='review')renderReview();window.scrollTo(0,0);}
 
 /* ============ 顶栏 ============ */
@@ -704,8 +708,9 @@ function renderDay(){
   h+=`</div>
    <label class="fld" style="margin-top:8px"><span>📝 今日小记</span><input type="text" value="${(lg.foodNote||'').replace(/"/g,'&quot;')}" placeholder="例：午餐爱吃；练了爬行和扶站" onchange="setDayNote('${dayDate}',this.value)"></label>
    </div>`;
-  h+=dayRecordsHTML(dayDate);
   document.getElementById('view-day').innerHTML=h;
+  const qf=document.getElementById('qfix');
+  if(qf){qf.innerHTML=quickBarHTML();if(CUR==='day')qf.style.display='block';}
 }
 function napMinOnDay(day){
   const [nsH,nsM]=(DB.pref.napStart||'06:45').split(':').map(Number);const [neH,neM]=(DB.pref.napEnd||'19:00').split(':').map(Number);
@@ -735,14 +740,14 @@ function daySumLine(date){
    ${open?`<div class="small" style="color:var(--p4);font-weight:600">😴 ${dtime(open.dt)} 入睡，睡眠进行中 · 醒了在下方点「起床」</div>`:''}
    ${(isT&&typeof tmActive==='function'&&tmActive())?`<div class="small" onclick="feedTimer()" style="color:#c2647d;font-weight:700;cursor:pointer">⏱ 喂奶计时中 · 左${Math.floor(tmElapsed('l')/60)}分 右${Math.floor(tmElapsed('r')/60)}分 · 点击打开</div>`:''}`;
 }
-function dayRecordsHTML(date){
+/* 底部固定快捷记录栏（PIYO 式，打开即记） */
+function quickBarHTML(){
   const open=openSleepRec();
-  return `<div class="card"><div class="row" style="justify-content:space-between"><h2>➕ 记一笔</h2>
-    <div class="row"><button class="btn sm" onclick="addRec()">全部类型</button><button class="btn sm sec" onclick="feedTimer()">⏱ 计时</button><button class="btn sm sec" onclick="importSheet()">⬇️</button></div></div>
-    <div class="qbar">
-      ${open?`<button onclick="quickWake()" style="background:var(--p2b,#ffe)"><span class="qi">🌅</span>起床</button>`:`<button onclick="quickSleep()"><span class="qi">😴</span>睡觉</button>`}
-      ${quickList().filter(o=>o.on).map(o=>`<button onclick="addRec('${o.k}')"><span class="qi">${RTYPES[o.k].i}</span>${RTYPES[o.k].n}</button>`).join('')}
-      <button onclick="addRec()"><span class="qi">➕</span>更多</button></div></div>`;
+  return `<div class="qbar">
+    <button onclick="feedTimer()" style="background:#fdeef2"><span class="qi">⏱</span>计时</button>
+    ${open?`<button onclick="quickWake()" style="background:var(--p2b,#fff3d6)"><span class="qi">🌅</span>起床</button>`:`<button onclick="quickSleep()"><span class="qi">😴</span>睡觉</button>`}
+    ${quickList().filter(o=>o.on).map(o=>`<button onclick="addRec('${o.k}')"><span class="qi">${RTYPES[o.k].i}</span>${RTYPES[o.k].n}</button>`).join('')}
+    <button onclick="addRec()"><span class="qi">➕</span>更多</button></div>`;
 }
 function slotDefaultDur(times,i){for(let j=i+1;j<times.length;j++){if(times[j].k==='wake')return Math.max(15,Math.round(times[j].min-times[i].min));}return 90;}
 function findSleepStart(date,beforeIdx){
@@ -1625,13 +1630,13 @@ function sumChart(days){
       recsOn(d).forEach(r=>{const col=SCOL[r.type];if(!col||!['feed_breast','feed_formula','feed_bottle','feed_pump','feed_solid','drink'].includes(r.type))return;
         if(r.type==='feed_breast'){nb++;const sp=breastSpan(r);
           if(sp){const sM=dkey(sp.s)===d?toMin(dtime(sp.s)):0;const eM=dkey(sp.e)===d?toMin(dtime(sp.e)):1440;
-            body+=`<rect x="${c-8.5}" y="${yMin(sM,330)}" width="6" height="${Math.max(2.5,yMin(eM,330)-yMin(sM,330))}" rx="2" fill="${col}" opacity="0.9"/>`;}
-          else body+=svgMark(c-5,yMin(toMin(dtime(r.dt)),330),r.type,3.4);return;}
+            body+=`<rect x="${c-8.5}" y="${yMin(sM,560)}" width="6" height="${Math.max(2.5,yMin(eM,560)-yMin(sM,560))}" rx="2" fill="${col}" opacity="0.9"/>`;}
+          else body+=svgMark(c-5,yMin(toMin(dtime(r.dt)),560),r.type,3.4);return;}
         if(r.type==='feed_formula')nf++;else if(r.type==='feed_solid')ns++;
-        body+=svgMark(c+(r.type==='feed_formula'?5:0),yMin(toMin(dtime(r.dt)),330),r.type,3.4);});
+        body+=svgMark(c+(r.type==='feed_formula'?5:0),yMin(toMin(dtime(r.dt)),560),r.type,3.4);});
       cB.push(nb||null);cF.push(nf||null);cS.push(ns||null);});
     const present=[...new Set(DB.records.filter(r=>days.includes(dkey(r.dt))&&['feed_formula','feed_bottle','feed_pump','feed_solid','drink','snack','meal_main','water'].includes(r.type)).map(r=>r.type))];
-    return svgFrame(days,330,body,[{col:SCOL.feed_breast,vals:cB},{col:SCOL.feed_formula,vals:cF}])
+    return svgFrame(days,560,body,[{col:SCOL.feed_breast,vals:cB},{col:SCOL.feed_formula,vals:cF}])
       +legendHTML(present,blockChip(SCOL.feed_breast,'母乳(按时长)'));
   }
   if(SUMTAB==='feed'&&SUMVIEW==='vol'){
@@ -1676,8 +1681,8 @@ function sumChart(days){
     if(SUMVIEW==='time'){
       let body='';days.forEach((d,i)=>{const {c,w}=colGeo(i);const bw=w*0.62;
         sleepSegsOnDay(d).forEach(seg=>splitNap(seg).forEach(([a,b,k])=>{
-          body+=`<rect x="${c-bw/2}" y="${yMin(a,330)}" width="${bw}" height="${Math.max(1.5,yMin(b,330)-yMin(a,330))}" rx="3" fill="${SCOL[k]}" opacity="0.9"/>`;}));});
-      return badge+svgFrame(days,330,body,[{col:SCOL.night,vals:tot.map(t=>t?fmtDur(t):null)}])
+          body+=`<rect x="${c-bw/2}" y="${yMin(a,560)}" width="${bw}" height="${Math.max(1.5,yMin(b,560)-yMin(a,560))}" rx="3" fill="${SCOL[k]}" opacity="0.9"/>`;}));});
+      return badge+svgFrame(days,560,body,[{col:SCOL.night,vals:tot.map(t=>t?fmtDur(t):null)}])
         +legendHTML([],blockChip(SCOL.night,'夜间睡眠')+blockChip(SCOL.nap,'白天小觉'));
     }
     let bars='';const mxs=1440;
@@ -1693,10 +1698,10 @@ function sumChart(days){
     const cP=[],cO=[];let body='';
     days.forEach((d,i)=>{const {c}=colGeo(i);let np=0,no=0;
       recsOn(d).forEach(r=>{const m=toMin(dtime(r.dt));
-        if(r.type==='diaper_pee'||r.type==='diaper_both'){np++;body+=svgMark(c-5,yMin(m,330),'diaper_pee',3);}
-        if(r.type==='diaper_poop'||r.type==='diaper_both'){no++;body+=svgMark(c+5,yMin(m,330),'diaper_poop',3);}});
+        if(r.type==='diaper_pee'||r.type==='diaper_both'){np++;body+=svgMark(c-5,yMin(m,560),'diaper_pee',3);}
+        if(r.type==='diaper_poop'||r.type==='diaper_both'){no++;body+=svgMark(c+5,yMin(m,560),'diaper_poop',3);}});
       cP.push(np||null);cO.push(no||null);});
-    if(SUMVIEW==='time')return svgFrame(days,330,body,[{col:SCOL.diaper_pee,vals:cP},{col:SCOL.diaper_poop,vals:cO}])
+    if(SUMVIEW==='time')return svgFrame(days,560,body,[{col:SCOL.diaper_pee,vals:cP},{col:SCOL.diaper_poop,vals:cO}])
       +legendHTML(['diaper_pee','diaper_poop']);
     const mx=Math.max(5,...cP.map(x=>x||0),...cO.map(x=>x||0));let bars='';
     days.forEach((d,i)=>{const {c,w}=colGeo(i);const bw=w*0.28;
@@ -1710,26 +1715,26 @@ function sumChart(days){
     let body='';let any=false;
     days.forEach((d,i)=>{const {c}=colGeo(i);
       recsOn(d).forEach(r=>{if(r.type!=='temp'||!r.tempC)return;any=true;
-        const y=292-Math.min(1,Math.max(0,(r.tempC-35)/5))*270;
-        body+=`<circle cx="${c}" cy="${y}" r="3.2" fill="${SCOL.temp}"/><text x="${c}" y="${y-5}" font-size="7" fill="#c0392b" text-anchor="middle">${r.tempC}</text>`;});});
-    let g=`<svg viewBox="0 0 360 310" style="width:100%;background:#fffdf8;border:1px solid #f0e7da;border-radius:10px">`;
-    [35,36,37,38,39,40].forEach(t=>{const y=292-(t-35)/5*270;g+=`<line x1="26" y1="${y}" x2="358" y2="${y}" stroke="${t===37?'#f8c8c8':'#eee'}"/><text x="23" y="${y+2.5}" font-size="7" fill="#999" text-anchor="end">${t}</text>`;});
-    g+=body;days.forEach((d,i)=>{const {c}=colGeo(i);g+=`<text x="${c}" y="304" font-size="7.5" fill="#666" text-anchor="middle" font-weight="600">${+d.slice(8,10)}日</text>`;});
-    g+='</svg>';
+        const y=512-Math.min(1,Math.max(0,(r.tempC-35)/5))*480;
+        body+=svgMark(c,y,'temp',3.6)+`<text x="${c}" y="${y-6}" font-size="8" fill="#c0392b" text-anchor="middle">${r.tempC}</text>`;});});
+    let g=`<svg viewBox="0 0 360 535" style="width:100%;background:#fffdf8;border:1px solid #f0e7da;border-radius:10px">`;
+    [35,36,37,38,39,40].forEach(t=>{const y=512-(t-35)/5*480;g+=`<line x1="26" y1="${y}" x2="358" y2="${y}" stroke="${t===37?'#f8c8c8':'#eee'}"/><text x="23" y="${y+2.5}" font-size="7" fill="#999" text-anchor="end">${t}</text>`;});
+    g+=body;days.forEach((d,i)=>{const {c}=colGeo(i);g+=`<text x="${c}" y="528" font-size="7.5" fill="#666" text-anchor="middle" font-weight="600">${+d.slice(8,10)}日</text>`;});
+    g+='</svg>'+legendHTML(['temp']);
     return any?g:g+`<div class="small muted" style="margin-top:4px">本周没有体温记录</div>`;
   }
   /* ALL */
   let body='';
   days.forEach((d,i)=>{const {c,w}=colGeo(i);const bw=w*0.62;
     if(!SUMHIDE.sleep)sleepSegsOnDay(d).forEach(seg=>splitNap(seg).forEach(([a,b,k])=>{
-      body+=`<rect x="${c-bw/2}" y="${yMin(a,330)}" width="${bw}" height="${Math.max(1.5,yMin(b,330)-yMin(a,330))}" rx="3" fill="${SCOL[k]}" opacity="0.35"/>`;}));
+      body+=`<rect x="${c-bw/2}" y="${yMin(a,560)}" width="${bw}" height="${Math.max(1.5,yMin(b,560)-yMin(a,560))}" rx="3" fill="${SCOL[k]}" opacity="0.35"/>`;}));
     recsOn(d).forEach(r=>{if(r.type==='sleep'||r.type==='wake'||SUMHIDE[r.type])return;const col=SCOL[r.type]||'#9e9e9e';
       if(r.type==='feed_breast'){const sp=breastSpan(r);
         if(sp){const sM=dkey(sp.s)===d?toMin(dtime(sp.s)):0;const eM=dkey(sp.e)===d?toMin(dtime(sp.e)):1440;
-          body+=`<rect x="${c-bw/2}" y="${yMin(sM,330)}" width="${bw*0.45}" height="${Math.max(2.5,yMin(eM,330)-yMin(sM,330))}" rx="2" fill="${col}" opacity="0.85"/>`;return;}}
-      body+=svgMark(c,yMin(toMin(dtime(r.dt)),330),r.type,3);});});
+          body+=`<rect x="${c-bw/2}" y="${yMin(sM,560)}" width="${bw*0.45}" height="${Math.max(2.5,yMin(eM,560)-yMin(sM,560))}" rx="2" fill="${col}" opacity="0.85"/>`;return;}}
+      body+=svgMark(c,yMin(toMin(dtime(r.dt)),560),r.type,3);});});
   const allPresent=[...new Set(DB.records.filter(r=>days.includes(dkey(r.dt))&&r.type!=='sleep'&&r.type!=='wake'&&r.type!=='feed_breast'&&!SUMHIDE[r.type]).map(r=>r.type))];
-  return svgFrame(days,330,body,[])
+  return svgFrame(days,560,body,[])
     +legendHTML(allPresent,(SUMHIDE.sleep?'':blockChip(SCOL.night,'夜睡')+blockChip(SCOL.nap,'小觉'))+blockChip(SCOL.feed_breast,'母乳'));
 }
 function sumFilterSheet(){
