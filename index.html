@@ -890,10 +890,12 @@ function fmtDur(m){if(!m)return'';const h=Math.floor(m/60);return(h?h+'h':'')+(m
 /* ---- 睡眠智能配对：睡觉/起床独立事件，每个起床自动匹配前面最近的未配对睡觉 ---- */
 function addMinDT(dt,m){const d=new Date(new Date(dt).getTime()+m*60000);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());}
 function sleepPairs(){
-  const evs=[];
+  const evs=[],legacyInts=[];
   DB.records.forEach(r=>{
-    if(r.type==='sleep'){evs.push({t:'s',dt:r.dt,id:r.id});
-      if(r.durationMin>0)evs.push({t:'w',dt:addMinDT(r.dt,r.durationMin),id:r.id,legacy:true});}
+    if(r.type==='sleep'){
+      /* 旧式带时长记录 = 原子区间，不参与事件配对扫描 */
+      if(r.durationMin>0)legacyInts.push({s:r.dt,e:addMinDT(r.dt,r.durationMin),dur:r.durationMin,sid:r.id,wid:null});
+      else evs.push({t:'s',dt:r.dt,id:r.id});}
     else if(r.type==='wake')evs.push({t:'w',dt:r.dt,id:r.id});});
   evs.sort((a,b)=>a.dt<b.dt?-1:a.dt>b.dt?1:(a.t==='s'?-1:1));
   const ints=[],orphans={};let cur=null;
@@ -901,11 +903,12 @@ function sleepPairs(){
     if(e.t==='s')cur=e;
     else{
       if(cur){const dur=Math.round((new Date(e.dt)-new Date(cur.dt))/60000);
-        if(dur>0&&dur<1440)ints.push({s:cur.dt,e:e.dt,dur,sid:cur.id,wid:e.legacy?null:e.id});
-        else if(!e.legacy)orphans[e.id]=1;
+        if(dur>0&&dur<1440)ints.push({s:cur.dt,e:e.dt,dur,sid:cur.id,wid:e.id});
+        else orphans[e.id]=1;
         cur=null;}
-      else if(!e.legacy)orphans[e.id]=1;}});
-  return {ints,open:cur,orphans};
+      else orphans[e.id]=1;}});
+  const all=legacyInts.concat(ints).sort((a,b)=>a.s<b.s?-1:1);
+  return {ints:all,open:cur,orphans};
 }
 function sleepIntsOnDay(day){
   const s0=new Date(day+'T00:00:00').getTime(),s1=s0+86400000;
@@ -1555,6 +1558,31 @@ function reviewCharts(days){
 /* ============ 摘要板块（周视图图表，PIYO 式） ============ */
 let SUMTAB='feed',SUMVIEW='time',SUMHIDE={};
 const SCOL={feed_breast:'#ef8fa3',feed_formula:'#f5a742',feed_bottle:'#cdbf3e',feed_pump:'#cdbf3e',feed_solid:'#9ccc65',drink:'#64b5f6',snack:'#bcaaa4',meal_main:'#90a4ae',diaper_pee:'#4dd0e1',diaper_poop:'#a1887f',diaper_both:'#a1887f',temp:'#ef5350',night:'#7986cb',nap:'#ffb74d'};
+/* PIYO 式标记语言：喂养=圆 排泄/护理=方 活动=菱 补剂/早教=星 测量/健康=三角，图表与图例同源 */
+const MARKS={
+  feed_breast:{s:'c',c:'#ef8fa3'},feed_formula:{s:'c',c:'#f5a742'},feed_bottle:{s:'c',c:'#cdbf3e'},feed_pump:{s:'d',c:'#cdbf3e'},
+  feed_solid:{s:'c',c:'#9ccc65'},drink:{s:'c',c:'#64b5f6'},snack:{s:'c',c:'#bcaaa4'},meal_main:{s:'c',c:'#90a4ae'},water:{s:'c',c:'#90caf9'},
+  diaper_pee:{s:'q',c:'#4dd0e1'},diaper_poop:{s:'q',c:'#a1887f'},diaper_both:{s:'q',c:'#80cbc4'},
+  vitd3:{s:'st',c:'#f6c344'},vitad:{s:'st',c:'#f48fb1'},probiotic:{s:'st',c:'#81c784'},vitamin:{s:'st',c:'#b0bec5'},
+  walk:{s:'d',c:'#66bb6a'},bath:{s:'d',c:'#4fc3f7'},swim:{s:'st',c:'#42a5f5'},nail:{s:'d',c:'#ab47bc'},haircut:{s:'d',c:'#546e7a'},
+  temp:{s:'t',c:'#ef5350'},growth:{s:'t',c:'#7e57c2'},
+  cough:{s:'t',c:'#9575cd'},vomit:{s:'t',c:'#fdd835'},rash:{s:'t',c:'#ff8a65'},injury:{s:'t',c:'#e57373'},
+  med:{s:'q',c:'#9ccc65'},hospital:{s:'q',c:'#90a4ae'},vaccine:{s:'q',c:'#26c6da'},
+  ee_gross:{s:'st',c:'#7c5cc4'},ee_fine:{s:'st',c:'#ef6c00'},ee_percep:{s:'st',c:'#00897b'},ee_cog:{s:'st',c:'#3949ab'},
+  achievement:{s:'st',c:'#e53935'}};
+function markOf(t){return MARKS[t]||{s:'c',c:'#9e9e9e'};}
+function starPath(x,y,R,c){let p='';for(let i=0;i<10;i++){const r2=i%2?R*0.45:R;const a=-Math.PI/2+i*Math.PI/5;
+  p+=(i?'L':'M')+(x+r2*Math.cos(a)).toFixed(1)+' '+(y+r2*Math.sin(a)).toFixed(1)+' ';}return `<path d="${p}Z" fill="${c}"/>`;}
+function svgMark(x,y,t,r){const m=markOf(t);r=r||3.2;
+  if(m.s==='q')return `<rect x="${(x-r).toFixed(1)}" y="${(y-r).toFixed(1)}" width="${2*r}" height="${2*r}" rx="1.2" fill="${m.c}"/>`;
+  if(m.s==='d')return `<rect x="${(x-r).toFixed(1)}" y="${(y-r).toFixed(1)}" width="${2*r}" height="${2*r}" rx="1" fill="${m.c}" transform="rotate(45 ${x} ${y})"/>`;
+  if(m.s==='t')return `<path d="M${x} ${(y-r-0.5).toFixed(1)} L${(x+r+0.5).toFixed(1)} ${(y+r*0.85).toFixed(1)} L${(x-r-0.5).toFixed(1)} ${(y+r*0.85).toFixed(1)} Z" fill="${m.c}"/>`;
+  if(m.s==='st')return starPath(x,y,r+1.2,m.c);
+  return `<circle cx="${x}" cy="${y}" r="${r}" fill="${m.c}" stroke="#fff" stroke-width="0.7"/>`;}
+function legendChip(t,label){return `<span style="display:inline-flex;align-items:center;gap:3px;white-space:nowrap"><svg width="11" height="11" viewBox="-5.5 -5.5 11 11">${svgMark(0,0,t,3.4)}</svg>${label||(RTYPES[t]||{n:t}).n}</span>`;}
+function legendHTML(types,extra){
+  return `<div class="small muted" style="margin-top:5px;display:flex;flex-wrap:wrap;gap:7px;align-items:center">${(extra||'')}${types.map(t=>legendChip(t)).join('')}</div>`;}
+function blockChip(color,label){return `<span style="display:inline-flex;align-items:center;gap:3px;white-space:nowrap"><svg width="11" height="11" viewBox="0 0 11 11"><rect x="2.5" y="1" width="6" height="9" rx="2" fill="${color}"/></svg>${label}</span>`;}
 function yMin(min,H){return 12+min/1440*(H-46);}
 function colGeo(i){const L=26,colW=(360-L-4)/7;return {x:L+i*colW,w:colW,c:L+i*colW+colW/2};}
 function svgFrame(days,H,body,counts){
@@ -1598,12 +1626,13 @@ function sumChart(days){
         if(r.type==='feed_breast'){nb++;const sp=breastSpan(r);
           if(sp){const sM=dkey(sp.s)===d?toMin(dtime(sp.s)):0;const eM=dkey(sp.e)===d?toMin(dtime(sp.e)):1440;
             body+=`<rect x="${c-8.5}" y="${yMin(sM,330)}" width="6" height="${Math.max(2.5,yMin(eM,330)-yMin(sM,330))}" rx="2" fill="${col}" opacity="0.9"/>`;}
-          else body+=`<circle cx="${c-5}" cy="${yMin(toMin(dtime(r.dt)),330)}" r="3.4" fill="${col}" stroke="#fff" stroke-width="0.8"/>`;return;}
+          else body+=svgMark(c-5,yMin(toMin(dtime(r.dt)),330),r.type,3.4);return;}
         if(r.type==='feed_formula')nf++;else if(r.type==='feed_solid')ns++;
-        body+=`<circle cx="${c+(r.type==='feed_formula'?5:0)}" cy="${yMin(toMin(dtime(r.dt)),330)}" r="3.4" fill="${col}" stroke="#fff" stroke-width="0.8"/>`;});
+        body+=svgMark(c+(r.type==='feed_formula'?5:0),yMin(toMin(dtime(r.dt)),330),r.type,3.4);});
       cB.push(nb||null);cF.push(nf||null);cS.push(ns||null);});
+    const present=[...new Set(DB.records.filter(r=>days.includes(dkey(r.dt))&&['feed_formula','feed_bottle','feed_pump','feed_solid','drink','snack','meal_main','water'].includes(r.type)).map(r=>r.type))];
     return svgFrame(days,330,body,[{col:SCOL.feed_breast,vals:cB},{col:SCOL.feed_formula,vals:cF}])
-      +`<div class="small muted" style="margin-top:4px"><span style="color:${SCOL.feed_breast}">●</span>母乳 <span style="color:${SCOL.feed_formula}">●</span>配方奶 <span style="color:${SCOL.feed_bottle}">●</span>瓶喂/挤奶 <span style="color:${SCOL.feed_solid}">●</span>辅食 <span style="color:${SCOL.drink}">●</span>饮料</div>`;
+      +legendHTML(present,blockChip(SCOL.feed_breast,'母乳(按时长)'));
   }
   if(SUMTAB==='feed'&&SUMVIEW==='vol'){
     const st=days.map(d=>{let bn=0,lm=0,rm=0,fn=0,fml=0,btn=0,bml=0,sn=0;
@@ -1612,7 +1641,8 @@ function sumChart(days){
         if(r.type==='feed_solid')sn++;});
       return {bn,lm,rm,fn,fml,btn,bml,sn};});
     const avg=(arr)=>{const v=arr.filter(x=>x>0);return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):0;};
-    const aBrk=avg(st.map(s=>s.lm+s.rm)),aF=avg(st.map(s=>s.fml)),aB=avg(st.map(s=>s.bml));
+    const stP=st.filter((s,i)=>days[i]<todayStr());   /* 平均值不含未结束的今天 */
+    const aBrk=avg(stP.map(s=>s.lm+s.rm)),aF=avg(stP.map(s=>s.fml)),aB=avg(stP.map(s=>s.bml));
     const mx=Math.max(100,...st.map(s=>s.fml+s.bml));
     let bars='';days.forEach((d,i)=>{const {x,w,c}=colGeo(i);const s=st[i];const bw=w*0.55;let y0=296;
       [['fml',SCOL.feed_formula],['bml',SCOL.feed_bottle]].forEach(([k,col])=>{const v=s[k];if(!v)return;const hh=v/mx*250;y0-=hh;
@@ -1632,20 +1662,23 @@ function sumChart(days){
   if(SUMTAB==='sleep'){
     const calc=ds=>{const t=ds.map(d=>Math.round(sleepIntsOnDay(d).reduce((a,[x,y])=>a+y-x,0)));
       const n=ds.map(d=>napMinOnDay(d));return {tot:t,nap:n,night:t.map((v,i)=>Math.max(0,v-n[i]))};};
-    const cur=calc(days),prev=calc(days.map(d=>shiftDate(d,-7)));
-    const tot=cur.tot,naps=cur.nap;
+    const chartD=calc(days);
+    const statDays=days.filter(d=>d<todayStr());   /* 今天未结束，不计入统计 */
+    const cur=calc(statDays),prev=calc(statDays.map(d=>shiftDate(d,-7)));
+    const tot=chartD.tot,naps=chartD.nap;
     const stat=a=>{const v=a.filter(x=>x>0);return v.length?{avg:Math.round(v.reduce((x,y)=>x+y,0)/v.length),min:Math.min(...v),max:Math.max(...v)}:null;};
     const pct=(a,p)=>{if(!p||!p.avg||!a)return'';const v=Math.round((a-p.avg)/p.avg*100);
       return v?` <span style="font-size:10px;color:${v>0?'#3d9d64':'#e67e22'}">${v>0?'↑':'↓'}${Math.abs(v)}%</span>`:' <span style="font-size:10px;color:#999">—</span>';};
     const badge=`<div style="background:#fbf8f2;border:1px solid #f0e7da;border-radius:10px;padding:8px;margin-bottom:6px">
       ${[['🛏️','总睡眠',stat(cur.tot),stat(prev.tot),'#5260a8'],['🌙','夜间',stat(cur.night),stat(prev.night),'#7e5cc0'],['🌞','白天小觉',stat(cur.nap),stat(prev.nap),'#b07b22']].map(([ic,n,s,sp,col])=>
         s?`<div class="small" style="margin:2px 0"><b style="color:${col}">${ic}${n}</b> 平均 <b>${fmtDurCN(s.avg)}</b>${pct(s.avg,sp)} · 最小 ${fmtDurCN(s.min)}${pct(s.min,sp&&{avg:sp.min})} · 最大 ${fmtDurCN(s.max)}${pct(s.max,sp&&{avg:sp.max})}</div>`:'').join('')}
-      <div class="small muted" style="font-size:10px">↑↓ 为与上一个 7 天的比较</div></div>`;
+      <div class="small muted" style="font-size:10px">↑↓ 为与上一个 7 天的比较 · 今天未结束不计入统计</div></div>`;
     if(SUMVIEW==='time'){
       let body='';days.forEach((d,i)=>{const {c,w}=colGeo(i);const bw=w*0.62;
         sleepSegsOnDay(d).forEach(seg=>splitNap(seg).forEach(([a,b,k])=>{
           body+=`<rect x="${c-bw/2}" y="${yMin(a,330)}" width="${bw}" height="${Math.max(1.5,yMin(b,330)-yMin(a,330))}" rx="3" fill="${SCOL[k]}" opacity="0.9"/>`;}));});
-      return badge+svgFrame(days,330,body,[{col:SCOL.night,vals:tot.map(t=>t?fmtDur(t):null)}]);
+      return badge+svgFrame(days,330,body,[{col:SCOL.night,vals:tot.map(t=>t?fmtDur(t):null)}])
+        +legendHTML([],blockChip(SCOL.night,'夜间睡眠')+blockChip(SCOL.nap,'白天小觉'));
     }
     let bars='';const mxs=1440;
     days.forEach((d,i)=>{const {c,w}=colGeo(i);const bw=w*0.55;
@@ -1654,17 +1687,17 @@ function sumChart(days){
         bars+=`<text x="${c}" y="${296-hh-3}" font-size="7" fill="#666" text-anchor="middle" font-weight="700">${fmtDur(tot[i])}</text>`;}});
     let g=`<svg viewBox="0 0 360 316" style="width:100%;background:#fffdf8;border:1px solid #f0e7da;border-radius:10px">${bars}`;
     days.forEach((d,i)=>{const {c}=colGeo(i);g+=`<text x="${c}" y="310" font-size="7.5" fill="#666" text-anchor="middle" font-weight="600">${+d.slice(8,10)}日</text>`;});
-    return badge+g+'</svg>';
+    return badge+g+'</svg>'+legendHTML([],blockChip(SCOL.night,'总睡眠')+blockChip(SCOL.nap,'其中白天小觉'));
   }
   if(SUMTAB==='excrete'){
     const cP=[],cO=[];let body='';
     days.forEach((d,i)=>{const {c}=colGeo(i);let np=0,no=0;
       recsOn(d).forEach(r=>{const m=toMin(dtime(r.dt));
-        if(r.type==='diaper_pee'||r.type==='diaper_both'){np++;body+=`<rect x="${c-8}" y="${yMin(m,330)-3}" width="6" height="6" rx="1.5" fill="${SCOL.diaper_pee}"/>`;}
-        if(r.type==='diaper_poop'||r.type==='diaper_both'){no++;body+=`<rect x="${c+2}" y="${yMin(m,330)-3}" width="6" height="6" rx="1.5" fill="${SCOL.diaper_poop}"/>`;}});
+        if(r.type==='diaper_pee'||r.type==='diaper_both'){np++;body+=svgMark(c-5,yMin(m,330),'diaper_pee',3);}
+        if(r.type==='diaper_poop'||r.type==='diaper_both'){no++;body+=svgMark(c+5,yMin(m,330),'diaper_poop',3);}});
       cP.push(np||null);cO.push(no||null);});
     if(SUMVIEW==='time')return svgFrame(days,330,body,[{col:SCOL.diaper_pee,vals:cP},{col:SCOL.diaper_poop,vals:cO}])
-      +`<div class="small muted" style="margin-top:4px"><span style="color:${SCOL.diaper_pee}">■</span>尿尿 <span style="color:${SCOL.diaper_poop}">■</span>便便</div>`;
+      +legendHTML(['diaper_pee','diaper_poop']);
     const mx=Math.max(5,...cP.map(x=>x||0),...cO.map(x=>x||0));let bars='';
     days.forEach((d,i)=>{const {c,w}=colGeo(i);const bw=w*0.28;
       if(cP[i]){const hh=cP[i]/mx*240;bars+=`<rect x="${c-bw-1}" y="${290-hh}" width="${bw}" height="${hh}" rx="2" fill="${SCOL.diaper_pee}"/><text x="${c-bw/2-1}" y="${290-hh-3}" font-size="7" fill="#666" text-anchor="middle">${cP[i]}</text>`;}
@@ -1694,8 +1727,10 @@ function sumChart(days){
       if(r.type==='feed_breast'){const sp=breastSpan(r);
         if(sp){const sM=dkey(sp.s)===d?toMin(dtime(sp.s)):0;const eM=dkey(sp.e)===d?toMin(dtime(sp.e)):1440;
           body+=`<rect x="${c-bw/2}" y="${yMin(sM,330)}" width="${bw*0.45}" height="${Math.max(2.5,yMin(eM,330)-yMin(sM,330))}" rx="2" fill="${col}" opacity="0.85"/>`;return;}}
-      body+=`<circle cx="${c}" cy="${yMin(toMin(dtime(r.dt)),330)}" r="3" fill="${col}" stroke="#fff" stroke-width="0.7"/>`;});});
-  return svgFrame(days,330,body,[]);
+      body+=svgMark(c,yMin(toMin(dtime(r.dt)),330),r.type,3);});});
+  const allPresent=[...new Set(DB.records.filter(r=>days.includes(dkey(r.dt))&&r.type!=='sleep'&&r.type!=='wake'&&r.type!=='feed_breast'&&!SUMHIDE[r.type]).map(r=>r.type))];
+  return svgFrame(days,330,body,[])
+    +legendHTML(allPresent,(SUMHIDE.sleep?'':blockChip(SCOL.night,'夜睡')+blockChip(SCOL.nap,'小觉'))+blockChip(SCOL.feed_breast,'母乳'));
 }
 function sumFilterSheet(){
   const types={};DB.records.forEach(r=>{types[r.type]=1;});
