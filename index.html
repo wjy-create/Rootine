@@ -166,7 +166,7 @@ textarea{min-height:120px;resize:vertical}
   <button class="gear" onclick="openSettings()">⚙️</button>
 </div></div>
 <div class="tabs">
-  <button id="tab-day" class="on" onclick="go('day')"><span class="ic">🗓️</span>今日</button>
+  <button id="tab-day" class="on" onclick="go('day')"><span class="ic">📝</span>记录</button>
   <button id="tab-skill" onclick="go('skill')"><span class="ic">🌳</span>技能</button>
   <button id="tab-food" onclick="go('food')"><span class="ic">🥣</span>辅食</button>
   <button id="tab-growth" onclick="go('growth')"><span class="ic">📈</span>生长</button>
@@ -623,14 +623,25 @@ function renderDay(){
   let nextI=-1;if(isT){for(const t of times){if(!t.done&&t.min>=nm-20){nextI=t.i;break;}}}
   if(nextI<0){const f=times.find(t=>!t.done);nextI=f?f.i:-1;}
   let h=`<div class="card"><div class="row" style="justify-content:space-between">
-    <h2>🗓️ 今日</h2>
-    <input type="date" value="${dayDate}" style="width:auto" onchange="dayDate=this.value;renderDay()"></div>
+    <h2>📝 记录</h2>
+    <div class="row" style="gap:4px;align-items:center">
+      <button class="btn sm ghost" onclick="dayDate=shiftDate(dayDate,-1);renderDay()">◀</button>
+      <input type="date" value="${dayDate}" style="width:auto" onchange="dayDate=this.value;renderDay()">
+      <button class="btn sm ghost" onclick="dayDate=shiftDate(dayDate,1);renderDay()">▶</button>
+      ${isT?'':`<button class="btn sm sec" onclick="dayDate=todayStr();renderDay()">今天</button>`}
+    </div></div>
    <div class="bandbar"><b>${R.label}</b><span class="small muted">${a.text}</span>
     <label class="small" style="margin-left:auto">起床 <input type="time" value="${(lg.act&&lg.act[0]&&lg.act[0].t)||DB.pref.wake||'07:00'}" style="width:auto;display:inline-block;padding:4px 7px" onchange="setWake(this.value)"></label></div>
    <div class="small muted" style="margin:2px 0 4px">💡 ${R.tip}<br><span style="color:var(--p4)">点每项「完成」确认实际时间，后续作息会自动顺延推算。</span></div>
    <div class="row" style="justify-content:space-between;margin:6px 0 2px"><span class="small" style="font-weight:700">今日进度</span><span class="small muted">${doneN}/${times.length}</span></div>
    <div class="prog"><i style="width:${times.length?Math.round(doneN/times.length*100):0}%;background:var(--p3)"></i></div>
+   ${smartGuide()}
    <div class="tl">`;
+  const nowMs=Date.now();
+  const catsOf=t=>['feed_breast','feed_formula','feed_bottle'].includes(t)?['milk']:t==='feed_solid'?['solid']:t==='diaper_poop'?['poop']:t==='diaper_pee'?['pee']:t==='diaper_both'?['poop','pee']:[];
+  const latest={};DB.records.forEach(r=>{if(r.dt>nowDT())return;catsOf(r.type).forEach(c=>{if(!latest[c]||r.dt>latest[c].dt)latest[c]=r;});});
+  const markIds={};if(isT)Object.values(latest).forEach(r=>{markIds[r.id]=1;});
+  const agoTxt=r=>fmtDurCN(Math.max(1,Math.round((nowMs-new Date(r.dt))/60000)))+'前';
   const usedRids=new Set();Object.values(lg.act||{}).forEach(o=>{if(o&&o.rid)usedRids.add(o.rid);});
   const recCls=r=>(r.type.startsWith('feed')||r.type==='drink'||r.type==='water')?'k-feed':r.type==='sleep'?'k-sleep':(r.type==='growth'||r.type==='temp')?'k-care':'k-out';
   /* 记录条目：睡眠拆为「睡觉」「起床」两条，跨午夜的起床归到当天 */
@@ -649,12 +660,12 @@ function renderDay(){
   items.forEach(it=>{
     if(it.kind==='s'){const t=it.t;const isNext=t.i===nextI;
       const lr=(t.done&&lg.act&&lg.act[t.i]&&lg.act[t.i].rid)?DB.records.find(x=>x.id===lg.act[t.i].rid):null;
-      const sgap=lr?gapSince(lr):'';
+      const sgap=(lr&&markIds[lr.id])?agoTxt(lr):'';
       h+=`<div class="ev${isNext?' evnext':''}"><div class="tm ${t.done?'':'prop'}">${fmtMin(t.min)}${t.done?'':'<span class="propx">建议</span>'}</div>
         <div class="dot k-${t.k}">${KICON[t.k]||'•'}</div>
         <div class="bd"><div class="ti">${t.ti}${isNext?' <span class="nextlbl">下一步</span>':''}</div>${t.de?`<div class="de">${t.de}</div>`:''}
         ${t.done&&t.s?`<div class="de" style="color:var(--p3)">✓ ${t.s}</div>`:''}
-        ${sgap?`<div class="de" style="color:var(--muted)">${sgap}</div>`:''}
+        ${sgap?`<div class="de" style="color:#c2647d;font-weight:600">${sgap}</div>`:''}
         ${t.k==='meal'?`<span class="skref" style="background:var(--p3b);color:var(--p3)" onclick="go('food')">🥣 辅食</span>`:''}
         </div>
         ${t.done?`<div class="evchk on" onclick="undoSlot(${t.i})">✓</div>`:`<button class="cbtn" onclick="completeSlot(${t.i})">完成</button>`}</div>`;
@@ -668,10 +679,10 @@ function renderDay(){
         h+=`<div class="ev"><div class="tm">${it.wt}</div><div class="dot k-sleep">🌅</div>
           <div class="bd" onclick="recDetail('${r.id}')" style="cursor:pointer"><div class="ti" style="font-weight:500">起床 <span style="color:var(--warm);font-weight:600">${fmtDurCN(r.durationMin)}</span></div></div>
           </div>`;
-      }else{const gap=gapSince(r);
+      }else{const gap=markIds[r.id]?agoTxt(r):'';
         h+=`<div class="ev"><div class="tm">${dtime(r.dt)}</div>
           <div class="dot ${recCls(r)}">${(RTYPES[r.type]||RTYPES.other).i}</div>
-          <div class="bd" onclick="recDetail('${r.id}')" style="cursor:pointer"><div class="ti" style="font-weight:500">${recDesc(r)}</div>${gap?`<div class="de" style="color:var(--muted)">${gap}</div>`:''}</div>
+          <div class="bd" onclick="recDetail('${r.id}')" style="cursor:pointer"><div class="ti" style="font-weight:500">${recDesc(r)}</div>${gap?`<div class="de" style="color:#c2647d;font-weight:600">${gap}</div>`:''}</div>
           <div class="evrm" onclick="delRec('${r.id}')">✕</div></div>`;
       }
     }
@@ -844,6 +855,7 @@ function recDesc(r){
   if(['walk','swim','bigmotor'].includes(r.type))return`${T.n} ${r.durationMin?fmtDur(r.durationMin):''}`;
   if(r.type==='temp')return`体温 <b>${r.tempC||''}℃</b>`;
   if(r.type==='growth')return[r.weightKg?`体重 ${r.weightKg}kg`:'',r.heightCm?`身高 ${r.heightCm}cm`:'',r.headCm?`头围 ${r.headCm}cm`:'',r.chestCm?`胸围 ${r.chestCm}cm`:'',r.footCm?`脚长 ${footDisp(r.footCm)}`:'',r.note||''].filter(Boolean).join(' ');
+  if(r.type==='achievement')return `🏆 ${r.note||'成就'}${r.skill?` <small style="color:var(--p3)">🌳 ${skillLabel(r.skill)}</small>`:''}`;
   return T.n+(r.note?` <small>${r.note}</small>`:'');
 }
 function fmtDur(m){if(!m)return'';const h=Math.floor(m/60);return(h?h+'h':'')+(m%60?(m%60)+'m':(h?'':'0m'));}
@@ -905,7 +917,7 @@ function addRec(pre,editId){
       const st=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null)e.value=v;};
       st('f_ml',r.ml);st('f_l',r.leftMin);st('f_r',r.rightMin);st('f_order',r.order);st('f_food',r.food);st('f_dur',r.durationMin);
       st('f_temp',r.tempC);st('f_w',r.weightKg);st('f_h',r.heightCm);st('f_head',r.headCm);st('f_chest',r.chestCm);st('f_foot',r.footCm);
-      st('f_amt',r.amount);st('f_hard',r.hardness);st('f_color',r.color);st('f_note',r.note);}}
+      st('f_amt',r.amount);st('f_hard',r.hardness);st('f_color',r.color);st('f_note',r.note);st('f_skill',r.skill);}}
 }
 /* ---- 睡觉/起床 配对 ---- */
 function openSleepRec(){return DB.records.filter(r=>r.type==='sleep'&&r.durationMin==null).sort((a,b)=>b.dt.localeCompare(a.dt))[0];}
@@ -943,6 +955,23 @@ function gapSince(r){const c=gapCat(r.type);if(!c)return'';
   if(!best)return'';const m=Math.round((new Date(r.dt)-new Date(best.dt))/60000);
   if(m<=0||m>2880)return'';return `距上次${{milk:'喂奶',solid:'辅食',poop:'便便'}[c]} ${fmtDurCN(m)}`;}
 function fmtDurCN(m){if(m==null)return'';const h=Math.floor(m/60),mm=m%60;return(h?h+'小时':'')+(mm||!h?mm+'分钟':'');}
+/* ---- 智能日程指引 ---- */
+function smartGuide(){
+  if(dayDate!==todayStr())return'';
+  const tips=[];const now=new Date();
+  const open=openSleepRec();
+  if(open){const m=Math.round((now-new Date(open.dt))/60000);if(m>0&&m<1440)tips.push(`😴 宝宝睡眠中，已睡 ${fmtDurCN(m)}`);}
+  const milks=DB.records.filter(r=>['feed_breast','feed_formula','feed_bottle'].includes(r.type)&&r.dt<=nowDT()).sort((a,b)=>a.dt.localeCompare(b.dt));
+  if(milks.length){const last=milks[milks.length-1];const m=Math.round((now-new Date(last.dt))/60000);const iv=(DB.pref.feedIntervalH||3)*60;
+    if(m>=0&&m<1440){
+      if(m>=iv)tips.push(`🍼 距上次喂奶已 <b>${fmtDurCN(m)}</b>，超过 ${DB.pref.feedIntervalH||3} 小时间隔，<b>建议安排喂奶</b>`);
+      else tips.push(`🍼 距上次喂奶 ${fmtDurCN(m)}，约 ${fmtDurCN(iv-m)} 后到喂奶时间`);}}
+  try{const {times}=computeDay(dayDate);const nm=nowMin();
+    const nxt=times.find(t=>!t.done&&t.min>=nm-15);
+    if(nxt)tips.push(`📅 按「${ROUTINES[ageToRoutineKey(ageInfo(dayDate).months)].label}」作息，接下来 ${fmtMin(nxt.min)} ${nxt.ti}`);}catch(e){}
+  if(!tips.length)return'';
+  return `<div class="note-warn" style="background:#f2f8f4;border-color:#cde7d8;margin:6px 0">💡 <b>智能指引</b><br>${tips.join('<br>')}</div>`;
+}
 function recFields(){const t=document.getElementById('rty').value;const f=(RTYPES[t]||RTYPES.other).f;let h='';
   if(f==='ml')h=`<label class="fld"><span>量 ml</span><input type="number" id="f_ml" placeholder="例如 100"></label>`;
   else if(f==='breast')h=`<div class="row"><label class="fld" style="flex:1"><span>左 (分钟)</span><input type="number" id="f_l"></label><label class="fld" style="flex:1"><span>右 (分钟)</span><input type="number" id="f_r"></label></div>
@@ -956,6 +985,11 @@ function recFields(){const t=document.getElementById('rty').value;const f=(RTYPE
   else if(f==='temp')h=`<label class="fld"><span>体温 ℃</span><input type="number" step="0.1" id="f_temp" placeholder="例如 36.8"></label>`;
   else if(f==='measure')h=`<div class="row"><label class="fld" style="flex:1"><span>体重 kg</span><input type="number" step="0.01" id="f_w"></label><label class="fld" style="flex:1"><span>身高 cm</span><input type="number" step="0.1" id="f_h"></label></div><div class="row"><label class="fld" style="flex:1"><span>头围 cm</span><input type="number" step="0.1" id="f_head"></label><label class="fld" style="flex:1"><span>胸围 cm</span><input type="number" step="0.1" id="f_chest"></label></div><label class="fld"><span>脚长 cm</span><input type="number" step="0.1" id="f_foot"></label>`;
   else if(f==='text')h=`<label class="fld"><span>备注/内容(可选)</span><input type="text" id="f_note"></label>`;
+  if(t==='achievement'){const bi=ageToBandIdx(ageInfo().months);let og='';
+    Object.entries(DIMS).forEach(([dk,dim])=>{const ns=dim.nodes.map((n,i)=>[n,i]).filter(([n])=>Math.abs(n[0]-bi)<=1);
+      if(ns.length)og+=`<optgroup label="${dim.icon} ${dim.name}">${ns.map(([n,i])=>`<option value="${dk}_${i}">${n[1]}</option>`).join('')}</optgroup>`;});
+    h=`<label class="fld"><span>🏆 成就内容</span><input type="text" id="f_note" placeholder="例如 第一次独站 / 会拍手"></label>
+     <label class="fld"><span>关联技能树（可选，自动标记为已掌握）</span><select id="f_skill"><option value="">不关联</option>${og}</select></label>`;}
   if(f!=='text')h+=`<label class="fld"><span>备注(可选)</span><input type="text" id="f_note"></label>`;
   document.getElementById('rfields').innerHTML=h;
 }
@@ -972,6 +1006,7 @@ function saveRec(){const t=document.getElementById('rty').value;const dt=gv('rdt
   else if(f==='measure'){r.weightKg=+gv('f_w')||null;r.heightCm=+gv('f_h')||null;r.headCm=+gv('f_head')||null;r.chestCm=+gv('f_chest')||null;r.footCm=+gv('f_foot')||null;}
   else if(f==='poop'){if(gv('f_amt'))r.amount=gv('f_amt');if(gv('f_hard'))r.hardness=gv('f_hard');if(gv('f_color'))r.color=gv('f_color');}
   if(gv('f_note'))r.note=gv('f_note');
+  if(t==='achievement'&&gv('f_skill')){r.skill=gv('f_skill');DB.skills[r.skill]={status:'done',date:dkey(dt)};}
   if(EDIT_ID){const i=DB.records.findIndex(x=>x.id===EDIT_ID);
     if(i>=0){r.id=EDIT_ID;r._by=DB.records[i]._by||r._by;DB.records[i]=r;}EDIT_ID=null;}
   else DB.records.push(r);
