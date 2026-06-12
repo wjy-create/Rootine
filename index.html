@@ -632,9 +632,9 @@ function renderDay(){
     </div></div>
    <div class="bandbar"><b>${R.label}</b><span class="small muted">${a.text}</span>
     <label class="small" style="margin-left:auto">起床 <input type="time" value="${(lg.act&&lg.act[0]&&lg.act[0].t)||DB.pref.wake||'07:00'}" style="width:auto;display:inline-block;padding:4px 7px" onchange="setWake(this.value)"></label></div>
-   <div class="small muted" style="margin:2px 0 4px">💡 ${R.tip}<br><span style="color:var(--p4)">点每项「完成」确认实际时间，后续作息会自动顺延推算。</span></div>
-   <div class="row" style="justify-content:space-between;margin:6px 0 2px"><span class="small" style="font-weight:700">今日进度</span><span class="small muted">${doneN}/${times.length}</span></div>
-   <div class="prog"><i style="width:${times.length?Math.round(doneN/times.length*100):0}%;background:var(--p3)"></i></div>
+   ${daySumLine(dayDate)}
+   ${isT?`<div class="row" style="justify-content:space-between;margin:6px 0 2px"><span class="small" style="font-weight:700">今日进度</span><span class="small muted">${doneN}/${times.length}</span></div>
+   <div class="prog"><i style="width:${times.length?Math.round(doneN/times.length*100):0}%;background:var(--p3)"></i></div>`:''}
    ${smartGuide()}
    <div class="tl">`;
   const nowMs=Date.now();
@@ -655,7 +655,8 @@ function renderDay(){
         if(wd===dayDate)recItems.push({kind:'r',min:w.getHours()*60+w.getMinutes(),r,role:'wake',wt:pad(w.getHours())+':'+pad(w.getMinutes())});}
     }else if(dkey(r.dt)===dayDate)recItems.push({kind:'r',min:toMin(dtime(r.dt)),r});
   });
-  const items=times.map(t=>({kind:'s',min:t.min,t})).concat(recItems)
+  const showTimes=(dayDate<todayStr())?times.filter(t=>t.done):times;
+  const items=showTimes.map(t=>({kind:'s',min:t.min,t})).concat(recItems)
     .sort((x,y)=>x.min-y.min||(x.kind==='s'?-1:1));
   items.forEach(it=>{
     if(it.kind==='s'){const t=it.t;const isNext=t.i===nextI;
@@ -698,31 +699,24 @@ function napMinOnDay(day){
   const w0=new Date(day+'T00:00:00').getTime()+(nsH*60+nsM)*60000;const w1=new Date(day+'T00:00:00').getTime()+(neH*60+neM)*60000;
   let t=0;DB.records.forEach(r=>{if(r.type!=='sleep'||!r.durationMin)return;const st=new Date(r.dt).getTime();const en=st+r.durationMin*60000;
     const ov=Math.min(en,w1)-Math.max(st,w0);if(ov>0)t+=ov/60000;});return Math.round(t);}
-function dayRecordsHTML(date){
-  const recs=DB.records.filter(r=>dkey(r.dt)===date).sort((x,y)=>x.dt.localeCompare(y.dt));
+function daySumLine(date){
+  const recs=DB.records.filter(r=>dkey(r.dt)===date);
   let ml=0,lmin=0,rmin=0,solid=0,pee=0,poop=0;const sleep=sleepMinOnDay(date),nap=napMinOnDay(date);
   recs.forEach(r=>{if(r.type==='feed_formula'||r.type==='feed_bottle')ml+=r.ml||0;if(r.type==='feed_breast'){lmin+=r.leftMin||0;rmin+=r.rightMin||0;}if(['feed_solid','meal_main','snack'].includes(r.type))solid++;if(r.type==='diaper_pee'||r.type==='diaper_both')pee++;if(r.type==='diaper_poop'||r.type==='diaper_both')poop++;});
   const sum=[(lmin+rmin)?`🤱${lmin}分/${rmin}分`:'',ml?`🍼${ml}ml`:'',solid?`🥣${solid}次`:'',sleep?`😴${fmtDur(sleep)}`:'',nap?`<span style="color:var(--warm)">🌞小觉${fmtDur(nap)}</span>`:'',pee?`💦${pee}`:'',poop?`💩${poop}`:''].filter(Boolean).join(' · ');
-  /* 下次喂奶提醒 */
-  let nf='';
-  if(date===todayStr()){
-    const milks=DB.records.filter(r=>['feed_breast','feed_formula','feed_bottle'].includes(r.type)).sort((a,b)=>a.dt.localeCompare(b.dt));
-    if(milks.length){const last=milks[milks.length-1];const ivH=DB.pref.feedIntervalH||3;
-      const nx=new Date(new Date(last.dt).getTime()+ivH*3600000);const diff=Math.round((nx-new Date())/60000);
-      if(diff>-720)nf=`<div class="note-warn" style="margin:6px 0">🔔 下次喂奶时间 <b>${pad(nx.getHours())}:${pad(nx.getMinutes())}</b>（${diff>=0?fmtDur(diff)+'后':'已过 '+fmtDur(-diff)}）<span class="muted">· 间隔${ivH}h</span></div>`;}
-  }
+  const isT=date===todayStr();const open=isT?openSleepRec():null;
+  return `<div class="small" style="margin:4px 0;font-weight:600">${sum||'还没有记录'}</div>
+   ${open?`<div class="small" style="color:var(--p4);font-weight:600">😴 ${dtime(open.dt)} 入睡，睡眠进行中 · 醒了在下方点「起床」</div>`:''}
+   ${(isT&&typeof tmActive==='function'&&tmActive())?`<div class="small" onclick="feedTimer()" style="color:#c2647d;font-weight:700;cursor:pointer">⏱ 喂奶计时中 · 左${Math.floor(tmElapsed('l')/60)}分 右${Math.floor(tmElapsed('r')/60)}分 · 点击打开</div>`:''}`;
+}
+function dayRecordsHTML(date){
   const open=openSleepRec();
-  let h=`<div class="card"><div class="row" style="justify-content:space-between"><h2>🍼 记录 · 今日汇总</h2>
-    <div class="row"><button class="btn sm" onclick="addRec()">＋ 记一笔</button><button class="btn sm sec" onclick="feedTimer()">⏱</button><button class="btn sm sec" onclick="importSheet()">⬇️</button></div></div>
+  return `<div class="card"><div class="row" style="justify-content:space-between"><h2>➕ 记一笔</h2>
+    <div class="row"><button class="btn sm" onclick="addRec()">全部类型</button><button class="btn sm sec" onclick="feedTimer()">⏱ 计时</button><button class="btn sm sec" onclick="importSheet()">⬇️</button></div></div>
     <div class="qbar">
       ${open?`<button onclick="quickWake()" style="background:var(--p2b,#ffe)"><span class="qi">🌅</span>起床</button>`:`<button onclick="quickSleep()"><span class="qi">😴</span>睡觉</button>`}
       ${quickList().filter(o=>o.on).map(o=>`<button onclick="addRec('${o.k}')"><span class="qi">${RTYPES[o.k].i}</span>${RTYPES[o.k].n}</button>`).join('')}
-      <button onclick="addRec()"><span class="qi">➕</span>更多</button></div>
-    ${open?`<div class="small" style="color:var(--p4);font-weight:600">😴 ${dtime(open.dt)} 入睡，睡眠进行中 · 醒了点「起床」</div>`:''}
-    ${(typeof tmActive==='function'&&tmActive())?`<div class="small" onclick="feedTimer()" style="color:#c2647d;font-weight:700;cursor:pointer">⏱ 喂奶计时中 · 左${Math.floor(tmElapsed('l')/60)}分 右${Math.floor(tmElapsed('r')/60)}分 · 点击打开</div>`:''}
-    <div class="small" style="margin:2px 0 4px;font-weight:600">${sum||'今天还没有记录'}</div>${nf}
-    <div class="small muted">点记录可查看详情/编辑；记录会出现在上方时间轴对应时刻。</div>`;
-  h+=`</div>`;return h;
+      <button onclick="addRec()"><span class="qi">➕</span>更多</button></div></div>`;
 }
 function slotDefaultDur(times,i){for(let j=i+1;j<times.length;j++){if(times[j].k==='wake')return Math.max(15,Math.round(times[j].min-times[i].min));}return 90;}
 function findSleepStart(date,beforeIdx){
@@ -835,6 +829,10 @@ const RTYPES={
   med:{i:'💊',n:'用药',grp:'健康',f:'text'},
   hospital:{i:'🏥',n:'医院',grp:'健康',f:'text'},
   vaccine:{i:'💉',n:'预防接种',grp:'健康',f:'text'},
+  ee_gross:{i:'🤸',n:'大运动',grp:'早教',f:'ee'},
+  ee_fine:{i:'✋',n:'精细动作',grp:'早教',f:'ee'},
+  ee_percep:{i:'👁️',n:'感知觉',grp:'早教',f:'ee'},
+  ee_cog:{i:'🧠',n:'认知',grp:'早教',f:'ee'},
   nail:{i:'✂️',n:'剪指甲',grp:'其他',f:'none'},
   haircut:{i:'💇',n:'理发',grp:'其他',f:'none'},
   achievement:{i:'🏆',n:'成就',grp:'其他',f:'text'},
@@ -856,6 +854,7 @@ function recDesc(r){
   if(r.type==='temp')return`体温 <b>${r.tempC||''}℃</b>`;
   if(r.type==='growth')return[r.weightKg?`体重 ${r.weightKg}kg`:'',r.heightCm?`身高 ${r.heightCm}cm`:'',r.headCm?`头围 ${r.headCm}cm`:'',r.chestCm?`胸围 ${r.chestCm}cm`:'',r.footCm?`脚长 ${footDisp(r.footCm)}`:'',r.note||''].filter(Boolean).join(' ');
   if(r.type==='achievement')return `🏆 ${r.note||'成就'}${r.skill?` <small style="color:var(--p3)">🌳 ${skillLabel(r.skill)}</small>`:''}`;
+  if(r.type.startsWith('ee_')){const dim=DIMS[r.type.slice(3)];return `${dim.icon} ${dim.name}${r.skill?` · ${skillLabel(r.skill)}`:''}${r.durationMin?` <small>${r.durationMin}分钟</small>`:''}${r.note?` <small>${r.note}</small>`:''}`;}
   return T.n+(r.note?` <small>${r.note}</small>`:'');
 }
 function fmtDur(m){if(!m)return'';const h=Math.floor(m/60);return(h?h+'h':'')+(m%60?(m%60)+'m':(h?'':'0m'));}
@@ -969,6 +968,15 @@ function smartGuide(){
   try{const {times}=computeDay(dayDate);const nm=nowMin();
     const nxt=times.find(t=>!t.done&&t.min>=nm-15);
     if(nxt)tips.push(`📅 按「${ROUTINES[ageToRoutineKey(ageInfo(dayDate).months)].label}」作息，接下来 ${fmtMin(nxt.min)} ${nxt.ti}`);}catch(e){}
+  /* 每日轮换早教建议 */
+  try{const bi=ageToBandIdx(ageInfo(dayDate).months);
+    const doy=Math.floor(new Date(dayDate+'T00:00:00').getTime()/86400000);
+    const dks=Object.keys(DIMS);const picks=[];
+    for(let j=0;j<dks.length&&picks.length<2;j++){const dk=dks[(doy+j)%dks.length];const dim=DIMS[dk];
+      const cand=dim.nodes.map((n,i)=>[n,i]).filter(([n,i])=>n[0]===bi&&(DB.skills[dk+'_'+i]||{}).status!=='done');
+      if(cand.length){const [n]=cand[doy%cand.length];
+        picks.push(`<span onclick="addRec('ee_${dk}')" style="cursor:pointer;text-decoration:underline">${dim.icon}${n[1]}</span>`);}}
+    if(picks.length)tips.push(`🧸 今日早教推荐：${picks.join('、')} <span class="muted">(每天换花样，点击即记录)</span>`);}catch(e){}
   if(!tips.length)return'';
   return `<div class="note-warn" style="background:#f2f8f4;border-color:#cde7d8;margin:6px 0">💡 <b>智能指引</b><br>${tips.join('<br>')}</div>`;
 }
@@ -980,6 +988,12 @@ function recFields(){const t=document.getElementById('rty').value;const f=(RTYPE
     <label class="fld" style="flex:1"><span>硬度</span><select id="f_hard"><option value=""></option><option>泻</option><option>软</option><option>通常</option><option>硬</option></select></label></div>
    <label class="fld"><span>颜色</span><select id="f_color"><option value=""></option><option>白</option><option>黄</option><option>橙</option><option>茶</option><option>绿</option><option>红</option><option>黑</option></select></label>`;
   else if(f==='pp')h='';
+  else if(f==='ee'){const dk=t.slice(3);const dim=DIMS[dk];const bi=ageToBandIdx(ageInfo().months);
+    let og='';dim.nodes.map((n,i)=>[n,i]).filter(([n])=>Math.abs(n[0]-bi)<=1).forEach(([n,i])=>{
+      const st=(DB.skills[dk+'_'+i]||{}).status;og+=`<option value="${dk}_${i}">${n[1]}${st==='done'?' ✅':st==='doing'?' 🔸':''}</option>`;});
+    h=`<div class="small muted" style="margin-bottom:4px">${dim.icon} 列表为适合当前月龄的${dim.name}练习（✅已掌握 🔸练习中）</div>
+     <label class="fld"><span>练习内容（自动关联技能树）</span><select id="f_skill"><option value="">自由活动/不关联</option>${og}</select></label>
+     <label class="fld"><span>时长(分钟，可选)</span><input type="number" id="f_dur"></label>`;}
   else if(f==='food')h=`<label class="fld"><span>内容</span><input type="text" id="f_food" placeholder="例如 蛋黄+米粉"></label><label class="fld"><span>量 ml(可选)</span><input type="number" id="f_ml"></label>`;
   else if(f==='dur')h=`<label class="fld"><span>时长 (分钟)</span><input type="number" id="f_dur" placeholder="例如 90"></label>`;
   else if(f==='temp')h=`<label class="fld"><span>体温 ℃</span><input type="number" step="0.1" id="f_temp" placeholder="例如 36.8"></label>`;
@@ -1005,6 +1019,9 @@ function saveRec(){const t=document.getElementById('rty').value;const dt=gv('rdt
   else if(f==='temp')r.tempC=+gv('f_temp')||null;
   else if(f==='measure'){r.weightKg=+gv('f_w')||null;r.heightCm=+gv('f_h')||null;r.headCm=+gv('f_head')||null;r.chestCm=+gv('f_chest')||null;r.footCm=+gv('f_foot')||null;}
   else if(f==='poop'){if(gv('f_amt'))r.amount=gv('f_amt');if(gv('f_hard'))r.hardness=gv('f_hard');if(gv('f_color'))r.color=gv('f_color');}
+  else if(f==='ee'){if(+gv('f_dur'))r.durationMin=+gv('f_dur');
+    if(gv('f_skill')){r.skill=gv('f_skill');const cur=DB.skills[r.skill];
+      if(!cur||!cur.status||cur.status==='todo')DB.skills[r.skill]={status:'doing',date:dkey(dt)};}}
   if(gv('f_note'))r.note=gv('f_note');
   if(t==='achievement'&&gv('f_skill')){r.skill=gv('f_skill');DB.skills[r.skill]={status:'done',date:dkey(dt)};}
   if(EDIT_ID){const i=DB.records.findIndex(x=>x.id===EDIT_ID);
@@ -1111,12 +1128,12 @@ function restoreBackup(d){if(!d||!d.profile){alert('不是有效备份文件');r
   if(confirm('恢复备份将覆盖当前所有数据，确定？')){DB=d;DB.skills=DB.skills||{};DB.records=DB.records||[];DB.pref=DB.pref||{wake:'07:00'};save();closeSheet();renderHeader();go(CUR);alert('已恢复 ✅');}}
 
 /* ============ 设置 ============ */
-const QDEF=['feed_breast','feed_formula','feed_pump','feed_bottle','feed_solid','drink','snack','meal_main','diaper_pee','diaper_poop','diaper_both','vitd3','vitad','probiotic','walk','bath','temp','growth','med','achievement'];
+const QDEF=['feed_breast','feed_formula','feed_pump','feed_bottle','feed_solid','drink','snack','meal_main','diaper_pee','diaper_poop','diaper_both','vitd3','vitad','probiotic','walk','bath','ee_gross','ee_fine','ee_percep','ee_cog','temp','growth','med','achievement'];
 function quickList(){
   let cfg=DB.pref.quick;
   if(!Array.isArray(cfg)||!cfg.length)cfg=QDEF.map(k=>({k,on:true}));
   cfg=cfg.filter(o=>RTYPES[o.k]);
-  QDEF.concat(Object.keys(RTYPES).filter(k=>k.startsWith('custom')&&k!=='custom')).forEach(k=>{if(RTYPES[k]&&!cfg.some(o=>o.k===k))cfg.push({k,on:k.startsWith('custom')});});
+  QDEF.concat(Object.keys(RTYPES).filter(k=>k.startsWith('custom')&&k!=='custom')).forEach(k=>{if(RTYPES[k]&&!cfg.some(o=>o.k===k))cfg.push({k,on:true});});
   return cfg;
 }
 function quickEditor(){
