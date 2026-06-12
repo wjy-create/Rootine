@@ -170,7 +170,7 @@ textarea{min-height:120px;resize:vertical}
   <button id="tab-skill" onclick="go('skill')"><span class="ic">🌳</span>技能</button>
   <button id="tab-food" onclick="go('food')"><span class="ic">🥣</span>辅食</button>
   <button id="tab-growth" onclick="go('growth')"><span class="ic">📈</span>生长</button>
-  <button id="tab-review" onclick="go('review')"><span class="ic">📊</span>复盘</button>
+  <button id="tab-review" onclick="go('review')"><span class="ic">📊</span>摘要</button>
 </div>
 <div class="wrap">
   <div id="view-day"></div>
@@ -575,7 +575,10 @@ function go(v){CUR=v;['day','skill','food','growth','review'].forEach(x=>{docume
 
 /* ============ 顶栏 ============ */
 function renderHeader(){const a=ageInfo();document.getElementById('hName').textContent=DB.profile.name||'宝宝';
-  document.getElementById('hAge').textContent=`${a.text} · ${ROUTINES[ageToRoutineKey(a.months)].label}`;}
+  const days=Math.floor((new Date(todayStr()+'T00:00:00')-new Date(DB.profile.birth+'T00:00:00'))/86400000);
+  const nth=days+((DB.pref.dayBase||'0')==='1'?1:0);
+  const ageTxt=(DB.pref.ageMode==='week')?`${Math.floor(days/7)}周${days%7}天`:a.text;
+  document.getElementById('hAge').textContent=`${ageTxt} · 出生后第${nth}天 · ${ROUTINES[ageToRoutineKey(a.months)].label}`;}
 
 /* ============ 今日（日程+记录合并）· 动态推算引擎 ============ */
 let dayDate=todayStr();
@@ -630,38 +633,53 @@ function renderDay(){
    <div class="tl">`;
   const usedRids=new Set();Object.values(lg.act||{}).forEach(o=>{if(o&&o.rid)usedRids.add(o.rid);});
   const recCls=r=>(r.type.startsWith('feed')||r.type==='drink'||r.type==='water')?'k-feed':r.type==='sleep'?'k-sleep':(r.type==='growth'||r.type==='temp')?'k-care':'k-out';
-  const items=times.map(t=>({kind:'s',min:t.min,t}))
-    .concat(DB.records.filter(r=>dkey(r.dt)===dayDate&&!usedRids.has(r.id)).map(r=>({kind:'r',min:toMin(dtime(r.dt)),r})))
+  /* 记录条目：睡眠拆为「睡觉」「起床」两条，跨午夜的起床归到当天 */
+  const recItems=[];
+  DB.records.forEach(r=>{
+    if(usedRids.has(r.id))return;
+    if(r.type==='sleep'){
+      if(dkey(r.dt)===dayDate)recItems.push({kind:'r',min:toMin(dtime(r.dt)),r,role:'sleep'});
+      if(r.durationMin){const w=new Date(new Date(r.dt).getTime()+r.durationMin*60000);
+        const wd=w.getFullYear()+'-'+pad(w.getMonth()+1)+'-'+pad(w.getDate());
+        if(wd===dayDate)recItems.push({kind:'r',min:w.getHours()*60+w.getMinutes(),r,role:'wake',wt:pad(w.getHours())+':'+pad(w.getMinutes())});}
+    }else if(dkey(r.dt)===dayDate)recItems.push({kind:'r',min:toMin(dtime(r.dt)),r});
+  });
+  const items=times.map(t=>({kind:'s',min:t.min,t})).concat(recItems)
     .sort((x,y)=>x.min-y.min||(x.kind==='s'?-1:1));
   items.forEach(it=>{
     if(it.kind==='s'){const t=it.t;const isNext=t.i===nextI;
+      const lr=(t.done&&lg.act&&lg.act[t.i]&&lg.act[t.i].rid)?DB.records.find(x=>x.id===lg.act[t.i].rid):null;
+      const sgap=lr?gapSince(lr):'';
       h+=`<div class="ev${isNext?' evnext':''}"><div class="tm ${t.done?'':'prop'}">${fmtMin(t.min)}${t.done?'':'<span class="propx">建议</span>'}</div>
         <div class="dot k-${t.k}">${KICON[t.k]||'•'}</div>
         <div class="bd"><div class="ti">${t.ti}${isNext?' <span class="nextlbl">下一步</span>':''}</div>${t.de?`<div class="de">${t.de}</div>`:''}
         ${t.done&&t.s?`<div class="de" style="color:var(--p3)">✓ ${t.s}</div>`:''}
-        ${t.sk?`<span class="skref" onclick="go('skill');setTimeout(()=>focusDim('${t.sk}'),60)">🌳 ${DIMS[t.sk].name}</span>`:''}
+        ${sgap?`<div class="de" style="color:var(--muted)">${sgap}</div>`:''}
         ${t.k==='meal'?`<span class="skref" style="background:var(--p3b);color:var(--p3)" onclick="go('food')">🥣 辅食</span>`:''}
         </div>
         ${t.done?`<div class="evchk on" onclick="undoSlot(${t.i})">✓</div>`:`<button class="cbtn" onclick="completeSlot(${t.i})">完成</button>`}</div>`;
-    }else{const r=it.r;const gap=gapSince(r);
-      h+=`<div class="ev"><div class="tm">${dtime(r.dt)}</div>
-        <div class="dot ${recCls(r)}">${(RTYPES[r.type]||RTYPES.other).i}</div>
-        <div class="bd" onclick="recDetail('${r.id}')" style="cursor:pointer"><div class="ti" style="font-weight:500">${recDesc(r)}</div><div class="de" style="color:var(--muted)">${gap||'📌 已记录'}</div></div>
-        <div class="evrm" onclick="delRec('${r.id}')">✕</div></div>`;
+    }else{const r=it.r;
+      if(it.role==='sleep'){
+        h+=`<div class="ev"><div class="tm">${dtime(r.dt)}</div><div class="dot k-sleep">😴</div>
+          <div class="bd" onclick="recDetail('${r.id}')" style="cursor:pointer"><div class="ti" style="font-weight:500">睡觉</div>
+          ${r.durationMin==null?'<div class="de" style="color:var(--p4)">进行中…</div>':''}</div>
+          <div class="evrm" onclick="delRec('${r.id}')">✕</div></div>`;
+      }else if(it.role==='wake'){
+        h+=`<div class="ev"><div class="tm">${it.wt}</div><div class="dot k-sleep">🌅</div>
+          <div class="bd" onclick="recDetail('${r.id}')" style="cursor:pointer"><div class="ti" style="font-weight:500">起床 <span style="color:var(--warm);font-weight:600">${fmtDurCN(r.durationMin)}</span></div></div>
+          </div>`;
+      }else{const gap=gapSince(r);
+        h+=`<div class="ev"><div class="tm">${dtime(r.dt)}</div>
+          <div class="dot ${recCls(r)}">${(RTYPES[r.type]||RTYPES.other).i}</div>
+          <div class="bd" onclick="recDetail('${r.id}')" style="cursor:pointer"><div class="ti" style="font-weight:500">${recDesc(r)}</div>${gap?`<div class="de" style="color:var(--muted)">${gap}</div>`:''}</div>
+          <div class="evrm" onclick="delRec('${r.id}')">✕</div></div>`;
+      }
     }
   });
   h+=`</div>
    <label class="fld" style="margin-top:8px"><span>📝 今日小记</span><input type="text" value="${(lg.foodNote||'').replace(/"/g,'&quot;')}" placeholder="例：午餐爱吃；练了爬行和扶站" onchange="setDayNote('${dayDate}',this.value)"></label>
    </div>`;
   h+=dayRecordsHTML(dayDate);
-  const bi=ageToBandIdx(months);
-  h+=`<div class="card"><h2>⭐ 本月龄重点技能 <span class="small muted">(${BANDS[bi]})</span></h2>
-   <div class="small muted" style="margin-bottom:6px">在技能树里标记掌握情况，日程会聚焦这些方向。</div>`;
-  Object.entries(DIMS).forEach(([dk,dim])=>{const ns=dim.nodes.map((n,i)=>[n,i]).filter(([n])=>n[0]===bi);if(!ns.length)return;
-    h+=`<div style="margin-top:8px"><div class="small" style="font-weight:700;color:${dim.color}">${dim.icon} ${dim.name}</div><div class="nodes" style="margin-top:5px">`;
-    ns.forEach(([n,i])=>{const id=dk+'_'+i;const s=(DB.skills[id]||{}).status||'todo';h+=`<div class="node" data-s="${s}" onclick="cycleSkill('${id}');renderDay()"><div class="nt">${n[1]}</div><span class="mk">${s==='done'?'✅':s==='doing'?'🔸':'⬜'}</span></div>`;});
-    h+=`</div></div>`;});
-  h+=`</div>`;
   document.getElementById('view-day').innerHTML=h;
 }
 function napMinOnDay(day){
@@ -687,9 +705,10 @@ function dayRecordsHTML(date){
     <div class="row"><button class="btn sm" onclick="addRec()">＋ 记一笔</button><button class="btn sm sec" onclick="feedTimer()">⏱</button><button class="btn sm sec" onclick="importSheet()">⬇️</button></div></div>
     <div class="qbar">
       ${open?`<button onclick="quickWake()" style="background:var(--p2b,#ffe)"><span class="qi">🌅</span>起床</button>`:`<button onclick="quickSleep()"><span class="qi">😴</span>睡觉</button>`}
-      ${['feed_breast','feed_formula','feed_pump','feed_bottle','feed_solid','drink','snack','meal_main','diaper_pee','diaper_poop','diaper_both','vitd3','vitad','probiotic','walk','bath','temp','growth','med','achievement'].map(k=>`<button onclick="addRec('${k}')"><span class="qi">${RTYPES[k].i}</span>${RTYPES[k].n}</button>`).join('')}
+      ${quickList().filter(o=>o.on).map(o=>`<button onclick="addRec('${o.k}')"><span class="qi">${RTYPES[o.k].i}</span>${RTYPES[o.k].n}</button>`).join('')}
       <button onclick="addRec()"><span class="qi">➕</span>更多</button></div>
     ${open?`<div class="small" style="color:var(--p4);font-weight:600">😴 ${dtime(open.dt)} 入睡，睡眠进行中 · 醒了点「起床」</div>`:''}
+    ${(typeof tmActive==='function'&&tmActive())?`<div class="small" onclick="feedTimer()" style="color:#c2647d;font-weight:700;cursor:pointer">⏱ 喂奶计时中 · 左${Math.floor(tmElapsed('l')/60)}分 右${Math.floor(tmElapsed('r')/60)}分 · 点击打开</div>`:''}
     <div class="small" style="margin:2px 0 4px;font-weight:600">${sum||'今天还没有记录'}</div>${nf}
     <div class="small muted">点记录可查看详情/编辑；记录会出现在上方时间轴对应时刻。</div>`;
   h+=`</div>`;return h;
@@ -819,10 +838,12 @@ function recDesc(r){
   if(r.type==='diaper_poop'||r.type==='diaper_both')return`${T.n}${r.amount?` 量:${r.amount}`:''}${r.hardness?` ${r.hardness}`:''}${r.color?` ${r.color}色`:''}`;
   if(['feed_formula','feed_pump','feed_bottle','drink','water'].includes(r.type))return`${T.n} <b>${r.ml||0}ml</b>`;
   if(['feed_solid','meal_main','snack'].includes(r.type))return`${T.n} ${r.food||''}${r.ml?` <small>${r.ml}ml</small>`:''}`;
-  if(r.type==='sleep')return r.durationMin==null?`😴 睡觉 <small>进行中…</small>`:`睡眠 ${fmtDur(r.durationMin)}`;
+  if(r.type==='sleep'){if(r.durationMin==null)return`😴 睡觉 <small>进行中…</small>`;
+    const w=new Date(new Date(r.dt).getTime()+r.durationMin*60000);
+    return`睡眠 ${dtime(r.dt)} 入睡 → ${pad(w.getHours())}:${pad(w.getMinutes())} 起床（${fmtDurCN(r.durationMin)}）`;}
   if(['walk','swim','bigmotor'].includes(r.type))return`${T.n} ${r.durationMin?fmtDur(r.durationMin):''}`;
   if(r.type==='temp')return`体温 <b>${r.tempC||''}℃</b>`;
-  if(r.type==='growth')return[r.weightKg?`体重 ${r.weightKg}kg`:'',r.heightCm?`身高 ${r.heightCm}cm`:'',r.headCm?`头围 ${r.headCm}cm`:'',r.chestCm?`胸围 ${r.chestCm}cm`:'',r.footCm?`脚长 ${r.footCm}cm`:'',r.note||''].filter(Boolean).join(' ');
+  if(r.type==='growth')return[r.weightKg?`体重 ${r.weightKg}kg`:'',r.heightCm?`身高 ${r.heightCm}cm`:'',r.headCm?`头围 ${r.headCm}cm`:'',r.chestCm?`胸围 ${r.chestCm}cm`:'',r.footCm?`脚长 ${footDisp(r.footCm)}`:'',r.note||''].filter(Boolean).join(' ');
   return T.n+(r.note?` <small>${r.note}</small>`:'');
 }
 function fmtDur(m){if(!m)return'';const h=Math.floor(m/60);return(h?h+'h':'')+(m%60?(m%60)+'m':(h?'':'0m'));}
@@ -920,7 +941,8 @@ function gapCat(t){return ['feed_breast','feed_formula','feed_bottle'].includes(
 function gapSince(r){const c=gapCat(r.type);if(!c)return'';
   let best=null;DB.records.forEach(x=>{if(x.id!==r.id&&gapCat(x.type)===c&&x.dt<r.dt&&(!best||x.dt>best.dt))best=x;});
   if(!best)return'';const m=Math.round((new Date(r.dt)-new Date(best.dt))/60000);
-  if(m<=0||m>2880)return'';return `距上次${{milk:'喂奶',solid:'辅食',poop:'便便'}[c]} ${fmtDur(m)}`;}
+  if(m<=0||m>2880)return'';return `距上次${{milk:'喂奶',solid:'辅食',poop:'便便'}[c]} ${fmtDurCN(m)}`;}
+function fmtDurCN(m){if(m==null)return'';const h=Math.floor(m/60),mm=m%60;return(h?h+'小时':'')+(mm||!h?mm+'分钟':'');}
 function recFields(){const t=document.getElementById('rty').value;const f=(RTYPES[t]||RTYPES.other).f;let h='';
   if(f==='ml')h=`<label class="fld"><span>量 ml</span><input type="number" id="f_ml" placeholder="例如 100"></label>`;
   else if(f==='breast')h=`<div class="row"><label class="fld" style="flex:1"><span>左 (分钟)</span><input type="number" id="f_l"></label><label class="fld" style="flex:1"><span>右 (分钟)</span><input type="number" id="f_r"></label></div>
@@ -1054,6 +1076,58 @@ function restoreBackup(d){if(!d||!d.profile){alert('不是有效备份文件');r
   if(confirm('恢复备份将覆盖当前所有数据，确定？')){DB=d;DB.skills=DB.skills||{};DB.records=DB.records||[];DB.pref=DB.pref||{wake:'07:00'};save();closeSheet();renderHeader();go(CUR);alert('已恢复 ✅');}}
 
 /* ============ 设置 ============ */
+const QDEF=['feed_breast','feed_formula','feed_pump','feed_bottle','feed_solid','drink','snack','meal_main','diaper_pee','diaper_poop','diaper_both','vitd3','vitad','probiotic','walk','bath','temp','growth','med','achievement'];
+function quickList(){
+  let cfg=DB.pref.quick;
+  if(!Array.isArray(cfg)||!cfg.length)cfg=QDEF.map(k=>({k,on:true}));
+  cfg=cfg.filter(o=>RTYPES[o.k]);
+  QDEF.concat(Object.keys(RTYPES).filter(k=>k.startsWith('custom')&&k!=='custom')).forEach(k=>{if(RTYPES[k]&&!cfg.some(o=>o.k===k))cfg.push({k,on:k.startsWith('custom')});});
+  return cfg;
+}
+function quickEditor(){
+  DB.pref.quick=quickList();
+  const rows=DB.pref.quick.map((o,i)=>`<div class="row" style="padding:6px 2px;border-bottom:1px solid #f3ece2;gap:6px;align-items:center">
+    <span style="width:24px;text-align:center">${RTYPES[o.k].i}</span><span style="flex:1">${RTYPES[o.k].n}</span>
+    <button class="btn sm ghost" onclick="qMove(${i},-1)" ${i===0?'disabled':''}>▲</button>
+    <button class="btn sm ghost" onclick="qMove(${i},1)" ${i===DB.pref.quick.length-1?'disabled':''}>▼</button>
+    <input type="checkbox" ${o.on?'checked':''} onchange="DB.pref.quick[${i}].on=this.checked;save()"></div>`).join('');
+  openSheet(`<h3>🔘 快捷按钮 显示/排序<span class="x" onclick="closeSheet();rerender()">×</span></h3>
+   <div class="small muted">勾选=显示在快捷栏；▲▼调整顺序。「睡觉/起床」固定在最前。</div>
+   <div style="max-height:55vh;overflow:auto;margin-top:6px">${rows}</div>
+   <div class="row" style="margin-top:10px"><button class="btn" onclick="closeSheet();rerender()">完成</button>
+    <button class="btn sm ghost" onclick="DB.pref.quick=null;save();quickEditor()">恢复默认</button></div>`);
+}
+function qMove(i,d){const a=DB.pref.quick;const j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];save();quickEditor();}
+function syncCustomTypes(){
+  (DB.pref.customEv||[]).forEach((ev,i)=>{const k='custom'+(i+1);
+    if(ev&&ev.n)RTYPES[k]={i:ev.i||'⭐',n:ev.n,grp:'自定义',f:'text'};else delete RTYPES[k];});
+}
+function customEvEditor(){
+  const evs=DB.pref.customEv||[];
+  const rows=Array.from({length:8},(_,i)=>{const e=evs[i]||{};
+    return `<div class="row" style="gap:6px;margin-top:6px;align-items:center">
+     <input type="text" id="ce_i${i}" value="${e.i||''}" placeholder="⭐" maxlength="2" style="width:44px;text-align:center">
+     <input type="text" id="ce_n${i}" value="${(e.n||'').replace(/"/g,'&quot;')}" placeholder="自定义 ${i+1}（如 喝水/抚触）" style="flex:1"></div>`;}).join('');
+  openSheet(`<h3>✨ 自定义事件<span class="x" onclick="closeSheet()">×</span></h3>
+   <div class="small muted">最多 8 个：左边填图标(emoji)，右边填名称；留空=不启用。保存后出现在「记一笔」类型列表和快捷栏设置中。</div>
+   ${rows}
+   <div class="row" style="margin-top:12px"><button class="btn" onclick="saveCustomEv()">保存</button><button class="btn ghost" onclick="closeSheet()">取消</button></div>`);
+}
+function saveCustomEv(){
+  DB.pref.customEv=Array.from({length:8},(_,i)=>({i:gv('ce_i'+i).trim(),n:gv('ce_n'+i).trim()}));
+  syncCustomTypes();save();closeSheet();rerender();
+}
+function applyPrefUI(){
+  const z={s:0.92,m:1,l:1.1}[DB.pref.recSize||'m']||1;
+  document.body.style.zoom=z;
+}
+function saveSettings(){
+  DB.profile.name=gv('s_name');DB.profile.birth=gv('s_birth');DB.profile.sex=gv('s_sex');
+  DB.pref.feedIntervalH=+gv('s_iv')||3;DB.pref.napStart=gv('s_ns')||'06:45';DB.pref.napEnd=gv('s_ne')||'19:00';
+  DB.pref.ageMode=gv('s_age')||'age';DB.pref.dayBase=gv('s_db')||'0';
+  DB.pref.recSize=gv('s_sz')||'m';DB.pref.footUnit=gv('s_fu')||'cm';
+  applyPrefUI();save();closeSheet();renderHeader();go(CUR);
+}
 function openSettings(){
   openSheet(`<h3>⚙️ 设置<span class="x" onclick="closeSheet()">×</span></h3>
    <label class="fld"><span>宝宝名字</span><input type="text" id="s_name" value="${DB.profile.name||''}"></label>
@@ -1062,7 +1136,13 @@ function openSettings(){
    <div class="row"><label class="fld" style="flex:1"><span>喂奶提醒间隔(小时)</span><input type="number" step="0.5" id="s_iv" value="${DB.pref.feedIntervalH||3}"></label></div>
    <div class="row"><label class="fld" style="flex:1"><span>白天小觉·开始</span><input type="time" id="s_ns" value="${DB.pref.napStart||'06:45'}"></label>
     <label class="fld" style="flex:1"><span>白天小觉·结束</span><input type="time" id="s_ne" value="${DB.pref.napEnd||'19:00'}"></label></div>
-   <div class="row"><button class="btn" onclick="DB.profile.name=gv('s_name');DB.profile.birth=gv('s_birth');DB.profile.sex=gv('s_sex');DB.pref.feedIntervalH=+gv('s_iv')||3;DB.pref.napStart=gv('s_ns')||'06:45';DB.pref.napEnd=gv('s_ne')||'19:00';save();closeSheet();renderHeader();go(CUR)">保存</button></div>
+   <div class="row"><label class="fld" style="flex:1"><span>年龄表示法</span><select id="s_age"><option value="age"${(DB.pref.ageMode||'age')==='age'?' selected':''}>年龄（X个月X天）</option><option value="week"${DB.pref.ageMode==='week'?' selected':''}>周龄（X周X天）</option></select></label>
+    <label class="fld" style="flex:1"><span>出生日是</span><select id="s_db"><option value="0"${(DB.pref.dayBase||'0')==='0'?' selected':''}>第0天</option><option value="1"${DB.pref.dayBase==='1'?' selected':''}>第1天</option></select></label></div>
+   <div class="row"><label class="fld" style="flex:1"><span>记录显示尺寸</span><select id="s_sz"><option value="s"${DB.pref.recSize==='s'?' selected':''}>小号</option><option value="m"${(DB.pref.recSize||'m')==='m'?' selected':''}>中号</option><option value="l"${DB.pref.recSize==='l'?' selected':''}>大号</option></select></label>
+    <label class="fld" style="flex:1"><span>脚码单位</span><select id="s_fu"><option value="cm"${(DB.pref.footUnit||'cm')==='cm'?' selected':''}>cm</option><option value="mm"${DB.pref.footUnit==='mm'?' selected':''}>mm</option></select></label></div>
+   <div class="row" style="margin-top:4px"><button class="btn sm sec" onclick="quickEditor()">🔘 快捷按钮排序</button>
+    <button class="btn sm sec" onclick="customEvEditor()">✨ 自定义事件</button></div>
+   <div class="row" style="margin-top:8px"><button class="btn" onclick="saveSettings()">保存</button></div>
    <div class="divider"></div>
    <h3 style="font-size:14px">☁️ 家庭共享</h3>
    ${CLOUD?`<div class="small">邀请码 <b style="font-size:17px;letter-spacing:3px">${CLOUD.invite_code||'—'}</b> · 我是 ${CLOUD.display_name}</div>
@@ -1098,38 +1178,54 @@ const GROWTH={
 };
 let gStd='cn', gMeasure='w';
 function estPct(v,[p3,p50,p97]){if(v<=p3)return'<P3';if(v<p50)return'约 P'+Math.round(3+(v-p3)/(p50-p3)*47);if(v<=p97)return'约 P'+Math.round(50+(v-p50)/(p97-p50)*47);return'>P97';}
+const GM={w:{n:'体重',unit:'kg',field:'weightKg',std:'wh'},h:{n:'身高',unit:'cm',field:'heightCm',std:'wh'},hc:{n:'头围',unit:'cm',field:'headCm',std:'hc'},chest:{n:'胸围',unit:'cm',field:'chestCm'},foot:{n:'脚长',unit:'cm',field:'footCm'}};
+function whoHC(sex){
+  const M=sex==='girl'
+    ?[33.9,36.5,38.3,39.5,40.6,41.5,42.2,42.8,43.4,43.8,44.2,44.6,44.9,45.2,45.4,45.7,45.9,46.1,46.2,46.4,46.6,46.7,46.9,47.0,47.2]
+    :[34.5,37.3,39.1,40.5,41.6,42.6,43.3,44.0,44.5,45.0,45.4,45.8,46.1,46.3,46.6,46.8,47.0,47.2,47.4,47.5,47.7,47.8,48.0,48.1,48.3];
+  return M.map((v,m)=>{const s=2.1+0.02*m;return [+(v-s).toFixed(1),v,+(v+s).toFixed(1)];});}
+function footDisp(cm){return (DB.pref.footUnit==='mm')?Math.round(cm*10)+'mm':cm+'cm';}
 function renderGrowth(){
   const sex=DB.profile.sex==='girl'?'girl':'boy';
-  const ds=GROWTH[gStd][gMeasure][sex];const unit=gMeasure==='w'?'kg':'cm';
+  const cfg=GM[gMeasure]||GM.w;
+  const ds=cfg.std==='wh'?GROWTH[gStd][gMeasure][sex]:cfg.std==='hc'?whoHC(sex):null;
+  const unit=(gMeasure==='foot'&&DB.pref.footUnit==='mm')?'mm':cfg.unit;
   const birth=new Date(DB.profile.birth+'T00:00:00');
-  const pts=DB.records.filter(r=>r.type==='growth'&&(gMeasure==='w'?r.weightKg:r.heightCm))
-    .map(r=>({m:(new Date(r.dt)-birth)/(86400000*30.4375),v:+(gMeasure==='w'?r.weightKg:r.heightCm)}))
+  let pts=DB.records.filter(r=>r.type==='growth'&&r[cfg.field])
+    .map(r=>({m:(new Date(r.dt)-birth)/(86400000*30.4375),v:+r[cfg.field]}))
     .filter(p=>p.m>=0&&p.m<=24.5).sort((a,b)=>a.m-b.m);
+  if(gMeasure==='foot'&&DB.pref.footUnit==='mm')pts=pts.map(p=>({m:p.m,v:Math.round(p.v*10)}));
   let h=`<div class="card"><h2>📈 生长曲线</h2>
    <div class="gctrl">
-     <button class="${gMeasure==='w'?'on':''}" onclick="gMeasure='w';renderGrowth()">体重</button>
-     <button class="${gMeasure==='h'?'on':''}" onclick="gMeasure='h';renderGrowth()">身长/身高</button>
-     <span style="flex:1"></span>
-     <button class="${gStd==='cn'?'on':''}" onclick="gStd='cn';renderGrowth()">中国标准</button>
-     <button class="${gStd==='who'?'on':''}" onclick="gStd='who';renderGrowth()">WHO</button>
+     ${Object.entries(GM).map(([k,c])=>`<button class="${gMeasure===k?'on':''}" onclick="gMeasure='${k}';renderGrowth()">${c.n}</button>`).join('')}
    </div>
-   <div class="small muted">${sex==='boy'?'男宝':'女宝'} · ${gStd==='cn'?'中国 WS/T 423-2022':'WHO 儿童生长标准'} · 阴影为 P3–P97 正常范围，虚线为 P50 中位数</div>`;
+   ${cfg.std==='wh'?`<div class="gctrl" style="margin-top:4px">
+     <button class="${gStd==='cn'?'on':''}" onclick="gStd='cn';renderGrowth()">中国标准</button>
+     <button class="${gStd==='who'?'on':''}" onclick="gStd='who';renderGrowth()">WHO</button></div>`:''}
+   <div class="small muted">${sex==='boy'?'男宝':'女宝'} · ${cfg.std==='wh'?(gStd==='cn'?'中国 WS/T 423-2022':'WHO 儿童生长标准')+' · 阴影为 P3–P97，虚线为 P50':cfg.std==='hc'?'WHO 头围参考 · 阴影为 P3–P97，虚线为 P50':gMeasure==='chest'?'胸围无官方标准曲线，仅记录趋势':'脚长记录趋势（买鞋参考）'}</div>`;
+  if(!ds&&!pts.length){
+    h+=`<div class="gstat">还没有${cfg.n}数据。点下方按钮记录后即可看到趋势。</div>
+     <div class="row" style="margin-top:10px"><button class="btn sm" onclick="addRec('growth')">＋ 记录测量</button><button class="btn sm sec" onclick="growthList()">📋 测量记录</button></div></div>`;
+    document.getElementById('view-growth').innerHTML=h;return;
+  }
   // y range
   let yMin=Infinity,yMax=-Infinity;
-  ds.forEach(r=>{yMin=Math.min(yMin,r[0]);yMax=Math.max(yMax,r[2]);});
+  if(ds)ds.forEach(r=>{yMin=Math.min(yMin,r[0]);yMax=Math.max(yMax,r[2]);});
   pts.forEach(p=>{yMin=Math.min(yMin,p.v);yMax=Math.max(yMax,p.v);});
+  if(yMin===yMax){yMin-=1;yMax+=1;}
   const pad=(yMax-yMin)*0.08;yMin-=pad;yMax+=pad;
   const W=340,H=250,mL=30,mR=8,mT=10,mB=22;
   const px=m=>mL+m/24*(W-mL-mR);
   const py=v=>mT+(yMax-v)/(yMax-yMin)*(H-mT-mB);
   const line=(idx,dash,col,w)=>{let d='';ds.forEach((r,m)=>{d+=(m?'L':'M')+px(m).toFixed(1)+' '+py(r[idx]).toFixed(1)+' ';});return`<path d="${d}" fill="none" stroke="${col}" stroke-width="${w}" ${dash?'stroke-dasharray="4 3"':''}/>`;};
-  // band P3-P97
-  let band='M';ds.forEach((r,m)=>{band+=px(m).toFixed(1)+' '+py(r[2]).toFixed(1)+' L';});
-  for(let m=ds.length-1;m>=0;m--){band+=px(m).toFixed(1)+' '+py(ds[m][0]).toFixed(1)+' L';}
-  band=band.slice(0,-1)+'Z';
   let svg=`<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">`;
-  svg+=`<path d="${band}" fill="${gStd==='cn'?'#e4eefb':'#e3f4ea'}" opacity="0.7"/>`;
-  svg+=line(2,false,'#b9c9e8',1)+line(0,false,'#b9c9e8',1)+line(1,true,gStd==='cn'?'#3b82c4':'#3a9d6a',1.5);
+  if(ds){
+    let band='M';ds.forEach((r,m)=>{band+=px(m).toFixed(1)+' '+py(r[2]).toFixed(1)+' L';});
+    for(let m=ds.length-1;m>=0;m--){band+=px(m).toFixed(1)+' '+py(ds[m][0]).toFixed(1)+' L';}
+    band=band.slice(0,-1)+'Z';
+    svg+=`<path d="${band}" fill="${cfg.std==='hc'?'#ece7f6':gStd==='cn'?'#e4eefb':'#e3f4ea'}" opacity="0.7"/>`;
+    svg+=line(2,false,'#b9c9e8',1)+line(0,false,'#b9c9e8',1)+line(1,true,cfg.std==='hc'?'#7e57c2':gStd==='cn'?'#3b82c4':'#3a9d6a',1.5);
+  }
   // y ticks
   const ticks=4;for(let i=0;i<=ticks;i++){const v=yMin+(yMax-yMin)*i/ticks;const y=py(v);svg+=`<line x1="${mL}" y1="${y.toFixed(1)}" x2="${W-mR}" y2="${y.toFixed(1)}" stroke="#f0e7df" stroke-width="0.6"/><text x="2" y="${(y+3).toFixed(1)}" font-size="8" fill="#8b8798">${v.toFixed(gMeasure==='w'?1:0)}</text>`;}
   // x ticks
@@ -1141,23 +1237,28 @@ function renderGrowth(){
     pts.forEach(p=>{svg+=`<circle cx="${px(p.m).toFixed(1)}" cy="${py(p.v).toFixed(1)}" r="3.2" fill="#fff" stroke="#e0762e" stroke-width="2"/>`;});}
   svg+=`</svg>`;
   h+=svg;
-  if(pts.length){const last=pts[pts.length-1];const mi=Math.max(0,Math.min(24,Math.round(last.m)));const pct=estPct(last.v,ds[mi]);
+  if(pts.length&&ds){const last=pts[pts.length-1];const mi=Math.max(0,Math.min(24,Math.round(last.m)));const pct=estPct(last.v,ds[mi]);
     const lo=ds[mi][0],hi=ds[mi][2];const judge=last.v<lo?'偏低，建议咨询儿保':last.v>hi?'偏高，建议咨询儿保':'在正常范围内 👍';
     h+=`<div class="gstat">最近一次（${mi}月龄）：<b>${last.v}${unit}</b> · ${pct} · ${judge}<div class="small muted" style="margin-top:3px">参考该月龄 P3–P97：${lo}–${hi} ${unit}</div></div>`;
+  }else if(pts.length){const last=pts[pts.length-1];
+    h+=`<div class="gstat">最近一次（${Math.round(last.m)}月龄）：<b>${last.v}${unit}</b> · 共 ${pts.length} 条记录</div>`;
   }else{
-    h+=`<div class="gstat">还没有${gMeasure==='w'?'体重':'身长'}数据。在下方记录后即可看到曲线。</div>`;
+    h+=`<div class="gstat">还没有${cfg.n}数据。在下方记录后即可看到曲线。</div>`;
   }
-  h+=`<div class="row" style="margin-top:10px"><button class="btn sm" onclick="addGrowth()">＋ 记录身高体重</button><button class="btn sm ghost" onclick="go('rec')">查看全部记录</button></div>
+  h+=`<div class="row" style="margin-top:10px"><button class="btn sm" onclick="addRec('growth')">＋ 记录测量</button><button class="btn sm sec" onclick="growthList()">📋 测量记录</button></div>
    <div class="note-warn">曲线仅供参考，个体差异大；关注趋势是否平稳比单点更重要。异常请咨询儿科/儿保医生。</div></div>`;
   document.getElementById('view-growth').innerHTML=h;
 }
-function addGrowth(){const now=new Date();const dl=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes());
-  openSheet(`<h3>📏 记录身高体重<span class="x" onclick="closeSheet()">×</span></h3>
-   <label class="fld"><span>时间</span><input type="datetime-local" id="g_dt" value="${dl}"></label>
-   <div class="row"><label class="fld" style="flex:1"><span>体重 kg</span><input type="number" step="0.01" id="g_w"></label><label class="fld" style="flex:1"><span>身长/身高 cm</span><input type="number" step="0.1" id="g_h"></label></div>
-   <div class="row"><button class="btn" onclick="saveGrowth()">保存</button><button class="btn ghost" onclick="closeSheet()">取消</button></div>`);}
-function saveGrowth(){const dt=gv('g_dt');const w=+gv('g_w')||null,ht=+gv('g_h')||null;if(!dt||(!w&&!ht)){alert('请填时间和至少一项');return;}
-  DB.records.push({id:uid(),dt,type:'growth',weightKg:w,heightCm:ht});save();closeSheet();renderGrowth();}
+function addGrowth(){addRec('growth');}
+function growthList(){
+  const rows=DB.records.filter(r=>r.type==='growth'||r.type==='temp').sort((a,b)=>b.dt.localeCompare(a.dt));
+  const birth=new Date(DB.profile.birth+'T00:00:00');
+  openSheet(`<h3>📋 测量记录<span class="x" onclick="closeSheet()">×</span></h3>
+   <div style="max-height:60vh;overflow:auto">`+(rows.length?rows.map(r=>{
+    const days=Math.floor((new Date(r.dt)-birth)/86400000);const wk=Math.floor(days/7)+'周'+days%7+'天';
+    return `<div class="rec" onclick="recDetail('${r.id}')" style="cursor:pointer"><div class="rt">${r.dt.slice(5,10).replace('-','/')}<br><span class="muted" style="font-size:9px">${wk}</span></div>
+     <div class="ri">${r.type==='temp'?'🌡️':'📏'}</div><div class="rc">${recDesc(r)}</div></div>`;}).join(''):'<div class="small muted">暂无测量记录</div>')+`</div>
+   <div class="row" style="margin-top:10px"><button class="btn sm" onclick="closeSheet();addRec('growth')">＋ 记录</button><button class="btn sm sec" onclick="closeSheet()">关闭</button></div>`);}
 
 /* ============ v2 辅食菜谱数据（6–24月，来源：丁香妈妈辅食攻略 + 中国婴幼儿喂养指南）============ */
 const FOODS={
@@ -1324,6 +1425,155 @@ function reviewCharts(days){
   else h+=barSVG(days,days.map(d=>milkOnDay(d)),v=>v+'ml','每日配方奶/瓶喂奶量','#e08a3c')+`<div class="small muted">仅统计配方奶/瓶喂母乳的 ml；亲喂次数见上方明细。</div>`;
   return h+`</div>`;
 }
+/* ============ 摘要板块（周视图图表，PIYO 式） ============ */
+let SUMTAB='feed',SUMVIEW='time',SUMHIDE={};
+const SCOL={feed_breast:'#ef8fa3',feed_formula:'#f5a742',feed_bottle:'#cdbf3e',feed_pump:'#cdbf3e',feed_solid:'#9ccc65',drink:'#64b5f6',snack:'#bcaaa4',meal_main:'#90a4ae',diaper_pee:'#4dd0e1',diaper_poop:'#a1887f',diaper_both:'#a1887f',temp:'#ef5350',night:'#7986cb',nap:'#ffb74d'};
+function yMin(min,H){return 12+min/1440*(H-46);}
+function colGeo(i){const L=26,colW=(360-L-4)/7;return {x:L+i*colW,w:colW,c:L+i*colW+colW/2};}
+function svgFrame(days,H,body,counts){
+  const L=26,W=360;let g=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;background:#fffdf8;border:1px solid #f0e7da;border-radius:10px">`;
+  days.forEach((d,i)=>{const {x,w}=colGeo(i);if(i%2)g+=`<rect x="${x}" y="${yMin(0,H)}" width="${w}" height="${yMin(1440,H)-yMin(0,H)}" fill="#fdf3f5" opacity="0.6"/>`;});
+  for(let hh=0;hh<=24;hh+=3){const y=yMin(hh*60,H);g+=`<line x1="${L}" y1="${y}" x2="${W-2}" y2="${y}" stroke="#eee"/><text x="${L-3}" y="${y+2.5}" font-size="7" fill="#999" text-anchor="end">${hh}</text>`;}
+  days.forEach((d,i)=>{const {c}=colGeo(i);const dt=new Date(d+'T00:00:00');const wd=dt.getDay();
+    g+=`<text x="${c}" y="${H-24}" font-size="7.5" fill="${wd===0?'#e57373':wd===6?'#64b5f6':'#666'}" text-anchor="middle" font-weight="600">${+d.slice(8,10)}日</text>`;});
+  (counts||[]).forEach((line,li)=>{days.forEach((d,i)=>{const {c}=colGeo(i);const t=line.vals[i];if(t==null)return;
+    g+=`<circle cx="${c-12}" cy="${H-14+li*9-2.5}" r="2.5" fill="${line.col}"/><text x="${c-7}" y="${H-14+li*9}" font-size="7" fill="#666">${t}</text>`;});});
+  return g+body+`</svg>`;
+}
+function sleepSegsOnDay(d){
+  const s0=new Date(d+'T00:00:00').getTime(),s1=s0+86400000;const segs=[];
+  DB.records.forEach(r=>{if(r.type!=='sleep'||!r.durationMin)return;const st=new Date(r.dt).getTime(),en=st+r.durationMin*60000;
+    const a=Math.max(st,s0),b=Math.min(en,s1);if(b>a)segs.push([(a-s0)/60000,(b-s0)/60000]);});
+  return segs;
+}
+function splitNap(seg){
+  const [ns,ne]=[(DB.pref.napStart||'06:45'),(DB.pref.napEnd||'19:00')].map(t=>{const[a,b]=t.split(':').map(Number);return a*60+b;});
+  const out=[];const[a,b]=seg;
+  if(b<=ns||a>=ne)out.push([a,b,'night']);
+  else{if(a<ns)out.push([a,ns,'night']);out.push([Math.max(a,ns),Math.min(b,ne),'nap']);if(b>ne)out.push([ne,b,'night']);}
+  return out;
+}
+function summaryHTML(days){
+  const tabs=[['feed','🍼喂奶'],['sleep','🌙睡眠'],['excrete','🩲排泄'],['temp','🌡️体温'],['all','ALL']];
+  const hasVol={feed:1,sleep:1,excrete:1};
+  let h=`<div class="card"><div class="row" style="justify-content:space-between"><h2>📊 摘要</h2>
+    <div class="row"><button class="btn sm ghost" onclick="reviewEnd=shiftDate(reviewEnd,-7);renderReview()">◀</button>
+    <span class="small muted">${days[0].slice(5).replace('-','月')}日~${days[6].slice(5).replace('-','月')}日</span>
+    <button class="btn sm ghost" onclick="reviewEnd=shiftDate(reviewEnd,7);if(reviewEnd>todayStr())reviewEnd=todayStr();renderReview()">▶</button></div></div>
+   <div class="seg">${tabs.map(([k,n])=>`<button class="${SUMTAB===k?'on':''}" onclick="SUMTAB='${k}';renderReview()">${n}</button>`).join('')}</div>
+   ${hasVol[SUMTAB]?`<div class="seg" style="margin-top:4px"><button class="${SUMVIEW==='time'?'on':''}" onclick="SUMVIEW='time';renderReview()">时间</button><button class="${SUMVIEW==='vol'?'on':''}" onclick="SUMVIEW='vol';renderReview()">量</button></div>`:''}
+   ${SUMTAB==='all'?`<div class="row" style="justify-content:flex-end;margin-top:4px"><button class="btn sm ghost" onclick="sumFilterSheet()">过滤</button></div>`:''}
+   <div style="margin-top:6px">${sumChart(days)}</div></div>`;
+  return h;
+}
+function sumChart(days){
+  const recsOn=d=>DB.records.filter(r=>dkey(r.dt)===d);
+  if(SUMTAB==='feed'&&SUMVIEW==='time'){
+    let body='';const cB=[],cF=[],cS=[];
+    days.forEach((d,i)=>{const {c}=colGeo(i);let nb=0,nf=0,ns=0;
+      recsOn(d).forEach(r=>{const col=SCOL[r.type];if(!col||!['feed_breast','feed_formula','feed_bottle','feed_pump','feed_solid','drink'].includes(r.type))return;
+        if(r.type==='feed_breast')nb++;else if(r.type==='feed_formula')nf++;else if(r.type==='feed_solid')ns++;
+        body+=`<circle cx="${c+(r.type==='feed_breast'?-5:r.type==='feed_formula'?5:0)}" cy="${yMin(toMin(dtime(r.dt)),330)}" r="3.4" fill="${col}" stroke="#fff" stroke-width="0.8"/>`;});
+      cB.push(nb||null);cF.push(nf||null);cS.push(ns||null);});
+    return svgFrame(days,330,body,[{col:SCOL.feed_breast,vals:cB},{col:SCOL.feed_formula,vals:cF}])
+      +`<div class="small muted" style="margin-top:4px"><span style="color:${SCOL.feed_breast}">●</span>母乳 <span style="color:${SCOL.feed_formula}">●</span>配方奶 <span style="color:${SCOL.feed_bottle}">●</span>瓶喂/挤奶 <span style="color:${SCOL.feed_solid}">●</span>辅食 <span style="color:${SCOL.drink}">●</span>饮料</div>`;
+  }
+  if(SUMTAB==='feed'&&SUMVIEW==='vol'){
+    const st=days.map(d=>{let bn=0,lm=0,rm=0,fn=0,fml=0,btn=0,bml=0,sn=0;
+      recsOn(d).forEach(r=>{if(r.type==='feed_breast'){bn++;lm+=r.leftMin||0;rm+=r.rightMin||0;}
+        if(r.type==='feed_formula'){fn++;fml+=r.ml||0;}if(r.type==='feed_bottle'||r.type==='feed_pump'){btn++;bml+=r.ml||0;}
+        if(r.type==='feed_solid')sn++;});
+      return {bn,lm,rm,fn,fml,btn,bml,sn};});
+    const avg=(arr)=>{const v=arr.filter(x=>x>0);return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length):0;};
+    const aBrk=avg(st.map(s=>s.lm+s.rm)),aF=avg(st.map(s=>s.fml)),aB=avg(st.map(s=>s.bml));
+    const mx=Math.max(100,...st.map(s=>s.fml+s.bml));
+    let bars='';days.forEach((d,i)=>{const {x,w,c}=colGeo(i);const s=st[i];const bw=w*0.55;let y0=296;
+      [['fml',SCOL.feed_formula],['bml',SCOL.feed_bottle]].forEach(([k,col])=>{const v=s[k];if(!v)return;const hh=v/mx*250;y0-=hh;
+        bars+=`<rect x="${c-bw/2}" y="${y0}" width="${bw}" height="${hh}" rx="3" fill="${col}"/><text x="${c}" y="${y0+hh/2+2.5}" font-size="7" fill="#fff" text-anchor="middle">${v}</text>`;});
+      if(s.fml+s.bml)bars+=`<text x="${c}" y="${y0-3}" font-size="7.5" fill="#666" text-anchor="middle" font-weight="700">${s.fml+s.bml}ml</text>`;});
+    let g=`<svg viewBox="0 0 360 330" style="width:100%;background:#fffdf8;border:1px solid #f0e7da;border-radius:10px">${bars}`;
+    days.forEach((d,i)=>{const {c}=colGeo(i);const dt=new Date(d+'T00:00:00');const wd=dt.getDay();
+      g+=`<text x="${c}" y="310" font-size="7.5" fill="${wd===0?'#e57373':wd===6?'#64b5f6':'#666'}" text-anchor="middle" font-weight="600">${+d.slice(8,10)}日</text>`;
+      g+=`<text x="${c}" y="320" font-size="6.5" fill="#999" text-anchor="middle">🤱${st[i].bn} ${st[i].lm}/${st[i].rm}分</text>`;
+      g+=`<text x="${c}" y="328" font-size="6.5" fill="#999" text-anchor="middle">🍼${st[i].fn}次 🥣${st[i].sn}次</text>`;});
+    g+='</svg>';
+    return `<div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">
+      <span class="foodchip" style="background:#fdeef2;color:#c2647d">平均亲喂 ${fmtDurCN(aBrk)||'—'}/天</span>
+      <span class="foodchip" style="background:#fef3e2;color:#b07b22">平均配方奶 ${aF}ml/天</span>
+      <span class="foodchip" style="background:#f7f4dd;color:#8f861f">平均瓶喂 ${aB}ml/天</span></div>`+g;
+  }
+  if(SUMTAB==='sleep'){
+    const tot=days.map(d=>sleepSegsOnDay(d).reduce((a,[s,e])=>a+e-s,0));
+    const naps=days.map(d=>napMinOnDay(d));
+    const avg=a=>{const v=a.filter(x=>x>0);return v.length?Math.round(v.reduce((x,y)=>x+y,0)/v.length):0;};
+    const badge=`<div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">
+      <span class="foodchip" style="background:#eceffb;color:#5260a8">平均 ${fmtDurCN(avg(tot))||'—'}</span>
+      <span class="foodchip" style="background:#fef3e2;color:#b07b22">平均小觉 ${fmtDurCN(avg(naps))||'—'}</span></div>`;
+    if(SUMVIEW==='time'){
+      let body='';days.forEach((d,i)=>{const {c,w}=colGeo(i);const bw=w*0.62;
+        sleepSegsOnDay(d).forEach(seg=>splitNap(seg).forEach(([a,b,k])=>{
+          body+=`<rect x="${c-bw/2}" y="${yMin(a,330)}" width="${bw}" height="${Math.max(1.5,yMin(b,330)-yMin(a,330))}" rx="3" fill="${SCOL[k]}" opacity="0.9"/>`;}));});
+      return badge+svgFrame(days,330,body,[{col:SCOL.night,vals:tot.map(t=>t?fmtDur(t):null)}]);
+    }
+    let bars='';const mxs=1440;
+    days.forEach((d,i)=>{const {c,w}=colGeo(i);const bw=w*0.55;
+      if(tot[i]){const hh=tot[i]/mxs*250;bars+=`<rect x="${c-bw/2}" y="${296-hh}" width="${bw}" height="${hh}" rx="3" fill="${SCOL.night}"/>`;
+        if(naps[i]){const nh=naps[i]/mxs*250;bars+=`<rect x="${c-bw/2}" y="${296-nh}" width="${bw}" height="${nh}" rx="3" fill="${SCOL.nap}"/><text x="${c}" y="${296-nh/2+2}" font-size="6.5" fill="#fff" text-anchor="middle">${fmtDur(naps[i])}</text>`;}
+        bars+=`<text x="${c}" y="${296-hh-3}" font-size="7" fill="#666" text-anchor="middle" font-weight="700">${fmtDur(tot[i])}</text>`;}});
+    let g=`<svg viewBox="0 0 360 316" style="width:100%;background:#fffdf8;border:1px solid #f0e7da;border-radius:10px">${bars}`;
+    days.forEach((d,i)=>{const {c}=colGeo(i);g+=`<text x="${c}" y="310" font-size="7.5" fill="#666" text-anchor="middle" font-weight="600">${+d.slice(8,10)}日</text>`;});
+    return badge+g+'</svg>';
+  }
+  if(SUMTAB==='excrete'){
+    const cP=[],cO=[];let body='';
+    days.forEach((d,i)=>{const {c}=colGeo(i);let np=0,no=0;
+      recsOn(d).forEach(r=>{const m=toMin(dtime(r.dt));
+        if(r.type==='diaper_pee'||r.type==='diaper_both'){np++;body+=`<rect x="${c-8}" y="${yMin(m,330)-3}" width="6" height="6" rx="1.5" fill="${SCOL.diaper_pee}"/>`;}
+        if(r.type==='diaper_poop'||r.type==='diaper_both'){no++;body+=`<rect x="${c+2}" y="${yMin(m,330)-3}" width="6" height="6" rx="1.5" fill="${SCOL.diaper_poop}"/>`;}});
+      cP.push(np||null);cO.push(no||null);});
+    if(SUMVIEW==='time')return svgFrame(days,330,body,[{col:SCOL.diaper_pee,vals:cP},{col:SCOL.diaper_poop,vals:cO}])
+      +`<div class="small muted" style="margin-top:4px"><span style="color:${SCOL.diaper_pee}">■</span>尿尿 <span style="color:${SCOL.diaper_poop}">■</span>便便</div>`;
+    const mx=Math.max(5,...cP.map(x=>x||0),...cO.map(x=>x||0));let bars='';
+    days.forEach((d,i)=>{const {c,w}=colGeo(i);const bw=w*0.28;
+      if(cP[i]){const hh=cP[i]/mx*240;bars+=`<rect x="${c-bw-1}" y="${290-hh}" width="${bw}" height="${hh}" rx="2" fill="${SCOL.diaper_pee}"/><text x="${c-bw/2-1}" y="${290-hh-3}" font-size="7" fill="#666" text-anchor="middle">${cP[i]}</text>`;}
+      if(cO[i]){const hh=cO[i]/mx*240;bars+=`<rect x="${c+1}" y="${290-hh}" width="${bw}" height="${hh}" rx="2" fill="${SCOL.diaper_poop}"/><text x="${c+bw/2+1}" y="${290-hh-3}" font-size="7" fill="#666" text-anchor="middle">${cO[i]}</text>`;}});
+    let g=`<svg viewBox="0 0 360 310" style="width:100%;background:#fffdf8;border:1px solid #f0e7da;border-radius:10px">${bars}`;
+    days.forEach((d,i)=>{const {c}=colGeo(i);g+=`<text x="${c}" y="304" font-size="7.5" fill="#666" text-anchor="middle" font-weight="600">${+d.slice(8,10)}日</text>`;});
+    return g+'</svg>';
+  }
+  if(SUMTAB==='temp'){
+    let body='';let any=false;
+    days.forEach((d,i)=>{const {c}=colGeo(i);
+      recsOn(d).forEach(r=>{if(r.type!=='temp'||!r.tempC)return;any=true;
+        const y=292-Math.min(1,Math.max(0,(r.tempC-35)/5))*270;
+        body+=`<circle cx="${c}" cy="${y}" r="3.2" fill="${SCOL.temp}"/><text x="${c}" y="${y-5}" font-size="7" fill="#c0392b" text-anchor="middle">${r.tempC}</text>`;});});
+    let g=`<svg viewBox="0 0 360 310" style="width:100%;background:#fffdf8;border:1px solid #f0e7da;border-radius:10px">`;
+    [35,36,37,38,39,40].forEach(t=>{const y=292-(t-35)/5*270;g+=`<line x1="26" y1="${y}" x2="358" y2="${y}" stroke="${t===37?'#f8c8c8':'#eee'}"/><text x="23" y="${y+2.5}" font-size="7" fill="#999" text-anchor="end">${t}</text>`;});
+    g+=body;days.forEach((d,i)=>{const {c}=colGeo(i);g+=`<text x="${c}" y="304" font-size="7.5" fill="#666" text-anchor="middle" font-weight="600">${+d.slice(8,10)}日</text>`;});
+    g+='</svg>';
+    return any?g:g+`<div class="small muted" style="margin-top:4px">本周没有体温记录</div>`;
+  }
+  /* ALL */
+  let body='';
+  days.forEach((d,i)=>{const {c,w}=colGeo(i);const bw=w*0.62;
+    if(!SUMHIDE.sleep)sleepSegsOnDay(d).forEach(seg=>splitNap(seg).forEach(([a,b,k])=>{
+      body+=`<rect x="${c-bw/2}" y="${yMin(a,330)}" width="${bw}" height="${Math.max(1.5,yMin(b,330)-yMin(a,330))}" rx="3" fill="${SCOL[k]}" opacity="0.35"/>`;}));
+    recsOn(d).forEach(r=>{if(r.type==='sleep'||SUMHIDE[r.type])return;const col=SCOL[r.type]||'#9e9e9e';
+      body+=`<circle cx="${c}" cy="${yMin(toMin(dtime(r.dt)),330)}" r="3" fill="${col}" stroke="#fff" stroke-width="0.7"/>`;});});
+  return svgFrame(days,330,body,[]);
+}
+function sumFilterSheet(){
+  const types={};DB.records.forEach(r=>{types[r.type]=1;});
+  const list=Object.keys(types).map(t=>[t,(RTYPES[t]||RTYPES.other)]);
+  openSheet(`<h3>过滤<span class="x" onclick="closeSheet()">×</span></h3>
+   <div class="row"><button class="btn sm sec" onclick="SUMHIDE={};renderReview();closeSheet()">选择全部</button>
+   <button class="btn sm ghost" onclick="sumHideAll()">取消全部</button></div>
+   ${list.map(([t,T])=>`<label class="row" style="padding:7px 2px;border-bottom:1px solid #f3ece2;gap:8px">
+     <input type="checkbox" ${SUMHIDE[t]?'':'checked'} onchange="if(this.checked)delete SUMHIDE['${t}'];else SUMHIDE['${t}']=1;renderReview()"> ${T.i} ${T.n}</label>`).join('')}
+   <div class="row" style="margin-top:10px"><button class="btn" onclick="closeSheet()">完成</button></div>`);
+}
+function sumHideAll(){DB.records.forEach(r=>{SUMHIDE[r.type]=1;});SUMHIDE.sleep=1;renderReview();closeSheet();}
+
 function renderReview(){
   if(!reviewEnd)reviewEnd=todayStr();
   const days=[];for(let i=6;i>=0;i--)days.push(shiftDate(reviewEnd,-i));
@@ -1336,9 +1586,8 @@ function renderReview(){
   const allergy=newFoods.filter(f=>f.reaction==='allergy');
   const skillsAdv=Object.entries(DB.skills).filter(([id,o])=>o.date&&o.date>=start&&o.date<=end&&o.status&&o.status!=='todo').map(([id,o])=>({l:skillLabel(id),s:o.status}));
   const wk=['日','一','二','三','四','五','六'];
-  let h=`<div class="card"><div class="row" style="justify-content:space-between"><h2>📊 周度复盘</h2>
-     <div class="row"><button class="btn sm ghost" onclick="reviewEnd=shiftDate(reviewEnd,-7);renderReview()">◀</button>
-     <button class="btn sm ghost" onclick="reviewEnd=shiftDate(reviewEnd,7);if(reviewEnd>todayStr())reviewEnd=todayStr();renderReview()">▶</button></div></div>
+  let h=summaryHTML(days);
+  h+=`<div class="card"><div class="row" style="justify-content:space-between"><h2>📊 周度复盘</h2></div>
      <div class="small muted">${start.slice(5)} ~ ${end.slice(5)}</div>
      <div class="targets">
        <div class="tgt"><div class="t">早教打卡</div><div class="v">${eeDone}/${eeTot}</div></div>
@@ -1355,7 +1604,6 @@ function renderReview(){
       <td>${doneN(d,it.out)}/${it.out.length}</td><td>${milkOnDay(d)||'—'}</td>
       <td>${sleepMinOnDay(d)?fmtDur(sleepMinOnDay(d)):'—'}</td></tr>`;});
   h+=`</table></div>`;
-  h+=reviewCharts(days);
   h+=`<div class="card"><h2>🌳 本周早教进展</h2>`;
   if(skillsAdv.length)h+=`<div>`+skillsAdv.map(s=>`<span class="foodchip" style="background:${s.s==='done'?'#eef6f0':'#fff8ec'};color:${s.s==='done'?'var(--p3)':'#b8801f'}">${s.s==='done'?'✅':'🔸'} ${s.l}</span>`).join('')+`</div>`;
   else h+=`<div class="small muted">本周技能树没有新标记。在「技能」里把"正在练/已掌握"标上，这里就会汇总。</div>`;
@@ -1373,36 +1621,54 @@ function renderReview(){
 }
 
 /* ============ 喂奶计时器 ============ */
-let TM={l:0,r:0,run:null,iv:null,alarm:15,bell:true,auto:false};
+let TM={l:0,r:0,run:null,runSince:0,first:null,startedAt:null,iv:null,alarm:15,bell:true};
+const TM_LS='rootine_timer_v1';
+function tmLoad(){try{const t=JSON.parse(localStorage.getItem(TM_LS));if(t){['l','r','run','runSince','first','startedAt','alarm','bell'].forEach(k=>{if(t[k]!==undefined)TM[k]=t[k];});if(TM.run)tmEnsureIv();}}catch(e){}}
+function tmPersist(){localStorage.setItem(TM_LS,JSON.stringify({l:TM.l,r:TM.r,run:TM.run,runSince:TM.runSince,first:TM.first,startedAt:TM.startedAt,alarm:TM.alarm,bell:TM.bell}));}
+function tmElapsed(side){return Math.floor(TM[side]+(TM.run===side?Math.max(0,(Date.now()-TM.runSince)/1000):0));}
+function tmActive(){return !!TM.run||TM.l+TM.r>0;}
 function tmFmt(s){return pad(Math.floor(s/60))+':'+pad(s%60);}
 function timerHTML(){
+  const L=tmElapsed('l'),R=tmElapsed('r');
   return `<h3>⏱ 喂奶计时器<span class="x" onclick="closeTimer()">×</span></h3>
-   <div class="row" style="justify-content:space-between"><label class="small">🔔 铃声提示 <input type="checkbox" ${TM.bell?'checked':''} onchange="TM.bell=this.checked"></label>
-   <label class="small">⏹ 自动停止 <input type="checkbox" ${TM.auto?'checked':''} onchange="TM.auto=this.checked"></label></div>
-   <div class="row" style="gap:4px;margin:10px 0">${[1,3,5,7,10,15,20].map(m=>`<button class="tpre ${TM.alarm===m?'on':''}" onclick="TM.alarm=${m};timerRefresh()">${m}分</button>`).join('')}</div>
-   <div class="row" style="align-items:flex-start;text-align:center">
-     <div class="tcol"><div class="small muted">左乳房</div><div class="tbig" id="tmL">${tmFmt(TM.l)}</div><button class="btn sm ${TM.run==='l'?'':'sec'}" onclick="tmToggle('l')">${TM.run==='l'?'⏸ 暂停':'▶ 开始'}</button></div>
-     <div class="tcol" style="flex:0 0 auto;padding-top:22px"><button class="btn sm ghost" onclick="tmReset()">重置</button></div>
-     <div class="tcol"><div class="small muted">右乳房</div><div class="tbig" id="tmR">${tmFmt(TM.r)}</div><button class="btn sm ${TM.run==='r'?'':'sec'}" onclick="tmToggle('r')">${TM.run==='r'?'⏸ 暂停':'▶ 开始'}</button></div>
-   </div>
-   <div class="row" style="margin-top:14px;justify-content:center"><button class="btn" onclick="tmSave()">📝 保存为母乳记录</button></div>
-   <div class="small muted" style="text-align:center;margin-top:6px">合计 左 ${Math.round(TM.l/60)} 分 · 右 ${Math.round(TM.r/60)} 分</div>`;
+   <div class="row" style="justify-content:space-between"><label class="small">🔔 ${TM.alarm}分提醒 <input type="checkbox" ${TM.bell?'checked':''} onchange="TM.bell=this.checked;tmPersist()"></label>
+    <label class="small">记录时间 <select onchange="DB.pref.tmRecAt=this.value;save()" style="width:auto;display:inline-block;padding:2px 6px"><option value="end" ${(DB.pref.tmRecAt||'end')==='end'?'selected':''}>结束时间</option><option value="start" ${DB.pref.tmRecAt==='start'?'selected':''}>开始时间</option></select></label></div>
+   <div class="row" style="gap:4px;margin:8px 0">${[5,10,15,20].map(m=>`<button class="tpre ${TM.alarm===m?'on':''}" onclick="TM.alarm=${m};tmPersist();timerRefresh()">${m}分</button>`).join('')}</div>
+   <div class="row" style="align-items:stretch;text-align:center;gap:10px">
+     <div class="tcol" onclick="tmToggle('l')" style="flex:1;cursor:pointer;background:${TM.run==='l'?'#fdeef2':'#faf6ef'};border:2px solid ${TM.run==='l'?'var(--p1)':'transparent'};border-radius:14px;padding:12px 4px">
+       <div class="small muted">左</div><div class="tbig" id="tmL">${tmFmt(L)}</div><div class="small" style="font-weight:700;color:var(--p1)">${TM.run==='l'?'⏸ 暂停':'▶ 开始'}</div></div>
+     <div class="tcol" onclick="tmToggle('r')" style="flex:1;cursor:pointer;background:${TM.run==='r'?'#fdeef2':'#faf6ef'};border:2px solid ${TM.run==='r'?'var(--p1)':'transparent'};border-radius:14px;padding:12px 4px">
+       <div class="small muted">右</div><div class="tbig" id="tmR">${tmFmt(R)}</div><div class="small" style="font-weight:700;color:var(--p1)">${TM.run==='r'?'⏸ 暂停':'▶ 开始'}</div></div></div>
+   ${TM.startedAt?`<div class="small muted" style="text-align:center;margin-top:6px">本次 ${dtime(TM.startedAt)} 开始${TM.first?` · ${TM.first==='l'?'从左边':'从右边'}`:''}</div>`:''}
+   <div class="small muted" style="text-align:center;margin-top:2px">关闭此窗口计时不会停，可随时回来继续；刷新/锁屏也不丢。</div>
+   <div class="row" style="margin-top:12px;justify-content:center"><button class="btn" onclick="tmSave()">📝 保存为母乳记录</button>
+    <button class="btn ghost sm" onclick="tmReset()">清零</button></div>`;
 }
-function feedTimer(){openSheet(timerHTML());}
-function timerRefresh(){if(document.getElementById('sheet'))document.getElementById('sheet').innerHTML=timerHTML();}
-function tmToggle(side){if(TM.run===side){tmPause();}else{TM.run=side;if(!TM.iv)TM.iv=setInterval(tmTick,1000);}timerRefresh();}
-function tmPause(){TM.run=null;if(TM.iv){clearInterval(TM.iv);TM.iv=null;}}
-function tmTick(){if(!TM.run)return;TM[TM.run]++;const e=document.getElementById(TM.run==='l'?'tmL':'tmR');if(e)e.textContent=tmFmt(TM[TM.run]);
-  if(TM.alarm&&TM[TM.run]===TM.alarm*60){if(TM.bell)beep();if(TM.auto){tmPause();timerRefresh();}}}
+function feedTimer(){openSheet(timerHTML());tmEnsureIv();}
+function timerRefresh(){const s=document.getElementById('sheet');if(s&&/喂奶计时器/.test(s.innerHTML))s.innerHTML=timerHTML();}
+function tmEnsureIv(){if(!TM.iv)TM.iv=setInterval(tmTick,1000);}
+function tmToggle(side){
+  if(TM.run===side){TM[side]=tmElapsed(side);TM.run=null;}
+  else{if(TM.run)TM[TM.run]=tmElapsed(TM.run);TM.run=side;TM.runSince=Date.now();
+    if(!TM.first)TM.first=side;if(!TM.startedAt)TM.startedAt=nowDT();tmEnsureIv();}
+  tmPersist();timerRefresh();}
+function tmTick(){if(!TM.run)return;const s=tmElapsed(TM.run);
+  const e=document.getElementById(TM.run==='l'?'tmL':'tmR');if(e)e.textContent=tmFmt(s);
+  if(TM.alarm&&TM.bell&&s===TM.alarm*60)beep();}
 function beep(){try{const a=new (window.AudioContext||window.webkitAudioContext)();const o=a.createOscillator();const g=a.createGain();o.connect(g);g.connect(a.destination);o.frequency.value=880;o.start();g.gain.setValueAtTime(0.25,a.currentTime);g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+0.7);o.stop(a.currentTime+0.7);}catch(e){}}
-function tmReset(){tmPause();TM.l=0;TM.r=0;timerRefresh();}
-function tmSave(){tmPause();const l=Math.round(TM.l/60),r=Math.round(TM.r/60);if(!l&&!r){alert('还没有计时');return;}
-  const now=new Date();const dt=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours())+':'+pad(now.getMinutes());
-  DB.records.push({id:uid(),dt,type:'feed_breast',leftMin:l,rightMin:r});save();TM.l=0;TM.r=0;closeSheet();renderDay();alert('已保存母乳记录 🍼');}
-function closeTimer(){tmPause();closeSheet();}
+function tmReset(){TM.run=null;TM.l=0;TM.r=0;TM.first=null;TM.startedAt=null;tmPersist();timerRefresh();}
+function tmSave(){if(TM.run){TM[TM.run]=tmElapsed(TM.run);TM.run=null;}
+  const l=Math.round(TM.l/60),r=Math.round(TM.r/60);
+  if(!l&&!r){alert('还没有计时');return;}
+  const dt=((DB.pref.tmRecAt||'end')==='start'&&TM.startedAt)?TM.startedAt:nowDT();
+  const rec={id:uid(),dt,type:'feed_breast',leftMin:l,rightMin:r,_by:CLOUD?CLOUD.member_id:null};
+  if(TM.first)rec.order=TM.first==='l'?'从左边':'从右边';
+  DB.records.push(rec);save();tmReset();closeSheet();rerender();alert(`已保存母乳记录 🍼 左${l}分 右${r}分`);}
+function closeTimer(){closeSheet();}
+tmLoad();
 
 /* ============ 启动 ============ */
-renderHeader();renderDay();initCloud();
+syncCustomTypes();applyPrefUI();renderHeader();renderDay();initCloud();
 </script>
 <script>
 if('serviceWorker' in navigator && location.protocol==='https:'){
