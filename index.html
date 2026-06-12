@@ -701,9 +701,22 @@ function napMinOnDay(day){
     const ov=Math.min(en,w1)-Math.max(st,w0);if(ov>0)t+=ov/60000;});return Math.round(t);}
 function daySumLine(date){
   const recs=DB.records.filter(r=>dkey(r.dt)===date);
-  let ml=0,lmin=0,rmin=0,solid=0,pee=0,poop=0;const sleep=sleepMinOnDay(date),nap=napMinOnDay(date);
-  recs.forEach(r=>{if(r.type==='feed_formula'||r.type==='feed_bottle')ml+=r.ml||0;if(r.type==='feed_breast'){lmin+=r.leftMin||0;rmin+=r.rightMin||0;}if(['feed_solid','meal_main','snack'].includes(r.type))solid++;if(r.type==='diaper_pee'||r.type==='diaper_both')pee++;if(r.type==='diaper_poop'||r.type==='diaper_both')poop++;});
-  const sum=[(lmin+rmin)?`🤱${lmin}分/${rmin}分`:'',ml?`🍼${ml}ml`:'',solid?`🥣${solid}次`:'',sleep?`😴${fmtDur(sleep)}`:'',nap?`<span style="color:var(--warm)">🌞小觉${fmtDur(nap)}</span>`:'',pee?`💦${pee}`:'',poop?`💩${poop}`:''].filter(Boolean).join(' · ');
+  const agg={};recs.forEach(r=>{const a=agg[r.type]=agg[r.type]||{n:0,ml:0,dur:0,l:0,r:0};
+    a.n++;a.ml+=r.ml||0;if(r.type!=='sleep')a.dur+=r.durationMin||0;a.l+=r.leftMin||0;a.r+=r.rightMin||0;});
+  const sleep=sleepMinOnDay(date),nap=napMinOnDay(date);
+  const parts=[];const shown={sleep:1,feed_breast:1,diaper_pee:1,diaper_poop:1,diaper_both:1};
+  if(agg.feed_breast)parts.push(`🤱${agg.feed_breast.n}次 ${agg.feed_breast.l}分/${agg.feed_breast.r}分`);
+  ['feed_formula','feed_bottle','feed_pump','drink','water'].forEach(t=>{if(agg[t]){shown[t]=1;parts.push(`${RTYPES[t].i}${agg[t].n}次${agg[t].ml?' '+agg[t].ml+'ml':''}`);}});
+  ['feed_solid','meal_main','snack'].forEach(t=>{if(agg[t]){shown[t]=1;parts.push(`${RTYPES[t].i}${agg[t].n}次`);}});
+  if(sleep)parts.push(`😴${fmtDur(sleep)}`);
+  if(nap)parts.push(`<span style="color:var(--warm)">🌞小觉${fmtDur(nap)}</span>`);
+  const pee=(agg.diaper_pee?agg.diaper_pee.n:0)+(agg.diaper_both?agg.diaper_both.n:0);
+  const poop=(agg.diaper_poop?agg.diaper_poop.n:0)+(agg.diaper_both?agg.diaper_both.n:0);
+  if(pee)parts.push(`💦${pee}`);if(poop)parts.push(`💩${poop}`);
+  /* 其余所有出现过的活动：散步(含时长)/洗澡/维生素/早教/自定义… */
+  Object.keys(RTYPES).forEach(t=>{if(shown[t]||!agg[t])return;const T=RTYPES[t];
+    parts.push(`${T.i}${agg[t].n}次${agg[t].dur?' '+fmtDur(agg[t].dur):''}`);});
+  const sum=parts.join(' · ');
   const isT=date===todayStr();const open=isT?openSleepRec():null;
   return `<div class="small" style="margin:4px 0;font-weight:600">${sum||'还没有记录'}</div>
    ${open?`<div class="small" style="color:var(--p4);font-weight:600">😴 ${dtime(open.dt)} 入睡，睡眠进行中 · 醒了在下方点「起床」</div>`:''}
@@ -744,12 +757,23 @@ function saveComplete(i){
   const hhmm=dt.slice(11,16);let s=c.ti,rec=null;
   if(c.k==='feed'){const ft=gv('c_ft');if(ft==='feed_breast'){const l=+gv('c_l')||0,r=+gv('c_r')||0;rec={type:'feed_breast',leftMin:l,rightMin:r};s=`母乳 左${l}右${r}`;}else{const ml=+gv('c_ml')||0;rec={type:ft,ml};s=`${RTYPES[ft].n} ${ml}ml`;}}
   else if(c.k==='meal'){const f=gv('c_food');rec={type:'feed_solid',food:f};s=`辅食 ${f||''}`.trim();}
-  else if(c.k==='sleep'){rec=null;s='入睡';}
-  else if(c.k==='wake'){const ss=findSleepStart(dayDate,i);if(ss){const dur=Math.round((new Date(dayDate+'T'+hhmm).getTime()-new Date(ss.iso).getTime())/60000);if(dur>0&&dur<1440){rec={type:'sleep',durationMin:dur,dt:ss.iso};s='起床 · 睡'+fmtDur(dur);}else s='起床';}else s='起床';}
+  else if(c.k==='sleep'){
+    const o=openSleepRec();
+    if(o){s='入睡(已有进行中睡眠)';}
+    else{rec={type:'sleep',durationMin:null};s='入睡';}}
+  else if(c.k==='wake'){
+    const o=openSleepRec();
+    if(o){const dur=Math.round((new Date(dayDate+'T'+hhmm).getTime()-new Date(o.dt).getTime())/60000);
+      if(dur>0&&dur<1440){o.durationMin=dur;s='起床 · 睡'+fmtDur(dur);}
+      else s='起床';}
+    else{const ss=findSleepStart(dayDate,i);
+      if(ss){const dur=Math.round((new Date(dayDate+'T'+hhmm).getTime()-new Date(ss.iso).getTime())/60000);
+        if(dur>0&&dur<1440){rec={type:'sleep',durationMin:dur,dt:ss.iso};s='起床 · 睡'+fmtDur(dur);}else s='起床';}
+      else s='起床';}}
   else if(c.k==='out'){const d=+gv('c_dur')||0;if(d)rec={type:'walk',durationMin:d};s=c.ti;}
   else if(c.k==='care'){if(/洗澡/.test(c.ti))rec={type:'bath'};else if(/维/.test(c.ti))rec={type:'vitamin',note:c.ti};s=c.ti;}
   else s=c.ti;
-  if(rec){rec.id=uid();if(!rec.dt)rec.dt=dayDate+'T'+hhmm;DB.records.push(rec);}
+  if(rec){rec.id=uid();if(!rec.dt)rec.dt=dayDate+'T'+hhmm;rec._by=(typeof CLOUD!=='undefined'&&CLOUD)?CLOUD.member_id:null;DB.records.push(rec);}
   const lg=DB.logs[dayDate]||(DB.logs[dayDate]={});if(!lg.act)lg.act={};lg.act[i]={t:hhmm,s,rid:rec?rec.id:null};if(!lg.done)lg.done={};lg.done[c.k+'|'+c.ti]=true;
   save();closeSheet();renderDay();
 }
