@@ -29,19 +29,18 @@ h1,h2,h3,h4{margin:0;font-weight:700}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
 input,select,textarea{font-family:inherit;font-size:14px}
 .wrap{max-width:880px;margin:0 auto;padding:0 16px 90px}
-/* header */
-.top{background:linear-gradient(135deg,#8b6fd0,#c46aa0);color:#fff;padding:18px 16px 16px;position:sticky;top:0;z-index:20;box-shadow:0 2px 12px rgba(140,90,170,.2)}
-.top-in{max-width:880px;margin:0 auto;display:flex;align-items:center;gap:12px}
-.babyface{width:44px;height:44px;border-radius:50%;background:#fff3;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0}
-.top h1{font-size:18px}
-.brand{font-size:10.5px;font-weight:800;letter-spacing:2px;opacity:.92;margin-bottom:1px}
-.top .sub{font-size:12.5px;opacity:.9;margin-top:1px}
-.top .gear{margin-left:auto;font-size:20px;opacity:.95;background:#ffffff22;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center}
-/* tabs */
-.tabs{display:flex;background:var(--card);position:sticky;top:78px;z-index:19;box-shadow:var(--shadow);border-radius:0 0 16px 16px;max-width:880px;margin:0 auto;overflow:hidden}
-.tabs button{flex:1;padding:9px 1px 7px;font-size:11px;color:var(--muted);border-bottom:3px solid transparent;transition:.15s}
-.tabs button .ic{display:block;font-size:17px;margin-bottom:1px}
-.tabs button.on{color:var(--p1);border-bottom-color:var(--p1);font-weight:600}
+/* header：单行紧凑 */
+.top{background:linear-gradient(135deg,#8b6fd0,#c46aa0);color:#fff;padding:7px 12px calc(7px);position:sticky;top:0;z-index:20;box-shadow:0 2px 12px rgba(140,90,170,.2);padding-top:calc(7px + env(safe-area-inset-top))}
+.top-in{max-width:880px;margin:0 auto;display:flex;align-items:center;gap:8px}
+.babyface{width:28px;height:28px;border-radius:50%;background:#fff3;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.top h1{font-size:15.5px;white-space:nowrap}
+.top .sub{font-size:11.5px;opacity:.9;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top .gear{margin-left:auto;font-size:17px;opacity:.95;background:#ffffff22;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+/* 底部主导航（拇指操作区） */
+.tabs{display:flex;background:var(--card);position:fixed;left:0;right:0;bottom:0;z-index:36;box-shadow:0 -3px 14px rgba(0,0,0,.09);border-top:1px solid #eee2d4;max-width:880px;margin:0 auto;padding-bottom:env(safe-area-inset-bottom)}
+.tabs button{flex:1;padding:6px 1px 5px;font-size:10px;color:var(--muted);border-top:2.5px solid transparent;transition:.15s}
+.tabs button .ic{display:block;font-size:20px;margin-bottom:1px}
+.tabs button.on{color:var(--p1);border-top-color:var(--p1);font-weight:600}
 .card{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:16px;margin-top:14px}
 .card h2{font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:7px}
 .muted{color:var(--muted)}
@@ -155,8 +154,10 @@ textarea{min-height:120px;resize:vertical}
 .nextlbl{font-size:10px;background:var(--warm);color:#fff;padding:1px 6px;border-radius:8px;font-weight:600}
 .cbtn{align-self:center;flex-shrink:0;background:var(--p1);color:#fff;font-size:12.5px;font-weight:600;padding:6px 13px;border-radius:14px}
 .evrm{align-self:center;flex-shrink:0;color:var(--p2);font-size:13px;opacity:.55;width:26px;text-align:center;cursor:pointer}
-#qfix{position:fixed;left:0;right:0;bottom:0;background:var(--card,#fffdf8);border-top:1px solid #eee2d4;box-shadow:0 -4px 16px rgba(0,0,0,.08);padding:4px 8px calc(5px + env(safe-area-inset-bottom));z-index:30;max-width:880px;margin:0 auto}
-#qfix .qbar{margin:0;padding:4px 0 2px}
+#qfix{position:fixed;left:0;right:0;bottom:calc(50px + env(safe-area-inset-bottom));background:var(--card,#fffdf8);border-top:1px solid #eee2d4;box-shadow:0 -3px 12px rgba(0,0,0,.05);padding:3px 8px 2px;z-index:30;max-width:880px;margin:0 auto}
+#qfix .qbar{margin:0;padding:3px 0 2px}
+.wrap{padding-bottom:calc(70px + env(safe-area-inset-bottom)) !important}
+body.hasqbar .wrap{padding-bottom:calc(150px + env(safe-area-inset-bottom)) !important}
 @media(min-width:560px){.sheet{border-radius:20px;margin-bottom:auto;margin-top:auto}.mask{align-items:center}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -164,7 +165,7 @@ textarea{min-height:120px;resize:vertical}
 <body>
 <div class="top"><div class="top-in">
   <div class="babyface">👶</div>
-  <div><div class="brand">🌱 ROOTINE <span id="syncDot" title="云同步状态" style="font-size:9px;color:#bbb;vertical-align:middle">●</span></div><h1 id="hName">悠悠</h1><div class="sub" id="hAge">—</div></div>
+  <h1 id="hName">悠悠</h1><span id="syncDot" title="云同步状态" style="font-size:8px;color:#bbb">●</span><div class="sub" id="hAge">—</div>
   <button class="gear" onclick="openSettings()">⚙️</button>
 </div></div>
 <div class="tabs">
@@ -180,7 +181,6 @@ textarea{min-height:120px;resize:vertical}
   <div id="view-food" style="display:none"></div>
   <div id="view-growth" style="display:none"></div>
   <div id="view-review" style="display:none"></div>
-  <div class="foot">🌱 <b>Rootine</b> · 每一天的节奏，扎下成长的根<br>纯本地存储，数据只保存在此设备浏览器中；建议定期在 ⚙️ 设置里导出备份。<br>本工具内容为科学育儿参考，不替代儿科医生建议。</div>
 </div>
 
 <div id="qfix" style="display:none"></div>
@@ -575,6 +575,7 @@ const KICON={sleep:'😴',feed:'🍼',play:'🧸',meal:'🥣',care:'🛁',out:'�
 let CUR='day';
 function go(v){CUR=v;['day','skill','food','growth','review'].forEach(x=>{document.getElementById('view-'+x).style.display=x===v?'block':'none';document.getElementById('tab-'+x).classList.toggle('on',x===v);});
   const qf=document.getElementById('qfix');if(qf)qf.style.display=v==='day'?'block':'none';
+  document.body.classList.toggle('hasqbar',v==='day');
   if(v==='day')renderDay();if(v==='skill')renderSkill();if(v==='food')renderFood();if(v==='growth')renderGrowth();if(v==='review')renderReview();window.scrollTo(0,0);}
 
 /* ============ 顶栏 ============ */
@@ -745,7 +746,8 @@ function quickBarHTML(){
   const open=openSleepRec();
   return `<div class="qbar">
     <button onclick="feedTimer()" style="background:#fdeef2"><span class="qi">⏱</span>计时</button>
-    ${open?`<button onclick="quickWake()" style="background:var(--p2b,#fff3d6)"><span class="qi">🌅</span>起床</button>`:`<button onclick="quickSleep()"><span class="qi">😴</span>睡觉</button>`}
+    <button onclick="quickSleep()" ${open?'style="opacity:.55"':''}><span class="qi">😴</span>睡觉</button>
+    <button onclick="quickWake()" ${open?'style="background:#fff3d6;box-shadow:inset 0 0 0 1.5px #f4b400"':''}><span class="qi">🌅</span>起床</button>
     ${quickList().filter(o=>o.on).map(o=>`<button onclick="addRec('${o.k}')"><span class="qi">${RTYPES[o.k].i}</span>${RTYPES[o.k].n}</button>`).join('')}
     <button onclick="addRec()"><span class="qi">➕</span>更多</button></div>`;
 }
@@ -1497,7 +1499,13 @@ function renderFood(){
      <div class="small muted" style="margin-top:6px">点食材可删除。⚠️ 为过敏/不适，请避免再次尝试并咨询医生。</div>`;
   }else{h+=`<div class="small muted">添加每次尝试的新食材，记录有无过敏反应（建议每次只试一种、观察 2~3 天）。</div>`;}
   h+=`</div>`;
-  document.getElementById('view-food').innerHTML=h;
+  /* 手机端：拆为二级 tab，避免长页下拉 */
+  const cards=h.split('<div class="card">').slice(1).map(s=>'<div class="card">'+s);
+  const ftabs=[['guide','📖 指南'],['recipe','👩‍🍳 菜谱'],['plan','🗓️ 周计划'],['list','🍓 食材']];
+  const fidx={guide:0,recipe:1,plan:2,list:3}[FOODSUB]||0;
+  document.getElementById('view-food').innerHTML=
+    `<div class="seg" style="margin-top:10px">${ftabs.map(([k,n])=>`<button class="${FOODSUB===k?'on':''}" onclick="FOODSUB='${k}';renderFood()">${n}</button>`).join('')}</div>`
+    +(cards[fidx]||cards[0]||'');
 }
 function genPlan(){const b=ageToFoodBand(ageInfo().months);const rs=FOODS[b].recipes.map(r=>r.n);
   const pk=()=>rs[Math.floor(Math.random()*rs.length)];
@@ -1561,7 +1569,7 @@ function reviewCharts(days){
   return h+`</div>`;
 }
 /* ============ 摘要板块（周视图图表，PIYO 式） ============ */
-let SUMTAB='feed',SUMVIEW='time',SUMHIDE={};
+let SUMTAB='feed',SUMVIEW='time',SUMHIDE={},REVSUB='charts',FOODSUB='guide';
 const SCOL={feed_breast:'#ef8fa3',feed_formula:'#f5a742',feed_bottle:'#cdbf3e',feed_pump:'#cdbf3e',feed_solid:'#9ccc65',drink:'#64b5f6',snack:'#bcaaa4',meal_main:'#90a4ae',diaper_pee:'#4dd0e1',diaper_poop:'#a1887f',diaper_both:'#a1887f',temp:'#ef5350',night:'#7986cb',nap:'#ffb74d'};
 /* PIYO 式标记语言：喂养=圆 排泄/护理=方 活动=菱 补剂/早教=星 测量/健康=三角，图表与图例同源 */
 const MARKS={
@@ -1787,7 +1795,8 @@ function renderReview(){
   const allergy=newFoods.filter(f=>f.reaction==='allergy');
   const skillsAdv=Object.entries(DB.skills).filter(([id,o])=>o.date&&o.date>=start&&o.date<=end&&o.status&&o.status!=='todo').map(([id,o])=>({l:skillLabel(id),s:o.status}));
   const wk=['日','一','二','三','四','五','六'];
-  let h=summaryHTML(days);
+  let h=`<div class="seg" style="margin-top:10px"><button class="${REVSUB==='charts'?'on':''}" onclick="REVSUB='charts';renderReview()">📊 图表</button><button class="${REVSUB==='review'?'on':''}" onclick="REVSUB='review';renderReview()">📋 周度复盘</button></div>`;
+  if(REVSUB==='charts'){h+=summaryHTML(days);document.getElementById('view-review').innerHTML=h;return;}
   h+=`<div class="card"><div class="row" style="justify-content:space-between"><h2>📊 周度复盘</h2></div>
      <div class="small muted">${start.slice(5)} ~ ${end.slice(5)}</div>
      <div class="targets">
