@@ -606,12 +606,21 @@ function computeDay(date){
   const months=ageInfo(date).months;const keyName=ageToRoutineKey(months);const chain=buildChain(keyName);
   const lg=DB.logs[date]||{};const act=lg.act||{};
   const startWake=(act[0]&&act[0].t)?toMin(act[0].t):toMin(DB.pref.wake||'07:00');
+  /* 实际喂奶记录参与锚定：建议的下一顿 = 实际最近一次喂奶 + 用户自定义间隔 */
+  const milkMins=DB.records.filter(r=>['feed_breast','feed_formula','feed_bottle'].includes(r.type)&&dkey(r.dt)===date).map(r=>toMin(dtime(r.dt)));
+  const latestMilk=milkMins.length?Math.max(...milkMins):null;
+  const ivMin=Math.round((DB.pref.feedIntervalH||3)*60);
   let lastWake=startWake,lastSleep=null,lastFeed=null,prev=null;const times=[];
   chain.forEach((c,i)=>{let base;
     if(c.a==='start')base=startWake;else if(c.a==='wake')base=lastWake;
     else if(c.a==='sleep')base=(lastSleep!=null?lastSleep:lastWake);
-    else if(c.a==='milk')base=(lastFeed!=null?lastFeed:lastWake);else base=(prev!=null?prev:startWake);
+    else if(c.a==='milk'){base=(lastFeed!=null?lastFeed:lastWake);
+      if(latestMilk!=null&&latestMilk>base)base=latestMilk;}
+    else base=(prev!=null?prev:startWake);
     let min=base+c.off;const done=!!(act[i]&&act[i].t);if(done)min=toMin(act[i].t);
+    /* 未完成的喂奶建议：不得早于 实际最近一次喂奶/上一槽位喂奶 + 用户间隔 */
+    if(c.k==='feed'&&!done){const lf=Math.max(latestMilk!=null?latestMilk:-1e9,lastFeed!=null?lastFeed:-1e9);
+      if(lf>-1e8)min=Math.max(min,lf+ivMin);}
     times.push({a:c.a,off:c.off,k:c.k,ti:c.ti,de:c.de,sk:c.sk,i,min,done,s:done?(act[i].s||''):''});
     if(c.k==='wake')lastWake=min;if(c.k==='sleep'&&!/夜觉/.test(c.ti))lastSleep=min;if(c.k==='feed')lastFeed=min;prev=min;});
   return {times,keyName,months,R:ROUTINES[keyName]};
@@ -642,6 +651,7 @@ function renderDay(){
   const latest={};DB.records.forEach(r=>{if(r.dt>nowDT())return;catsOf(r.type).forEach(c=>{if(!latest[c]||r.dt>latest[c].dt)latest[c]=r;});});
   const markIds={};if(isT)Object.values(latest).forEach(r=>{markIds[r.id]=1;});
   const agoTxt=r=>fmtDurCN(Math.max(1,Math.round((nowMs-new Date(r.dt))/60000)))+'前';
+  const _sp=sleepPairs();const openSleepId=_sp.open?_sp.open.id:null;
   const usedRids=new Set();Object.values(lg.act||{}).forEach(o=>{if(o&&o.rid)usedRids.add(o.rid);});
   const recCls=r=>(r.type.startsWith('feed')||r.type==='drink'||r.type==='water')?'k-feed':r.type==='sleep'?'k-sleep':(r.type==='growth'||r.type==='temp')?'k-care':'k-out';
   /* 记录条目：睡眠拆为「睡觉」「起床」两条，跨午夜的起床归到当天 */
@@ -674,14 +684,17 @@ function renderDay(){
       if(it.role==='sleep'){
         h+=`<div class="ev"><div class="tm">${dtime(r.dt)}</div><div class="dot k-sleep">😴</div>
           <div class="bd" onclick="recDetail('${r.id}')" style="cursor:pointer"><div class="ti" style="font-weight:500">睡觉</div>
-          ${r.durationMin==null?'<div class="de" style="color:var(--p4)">进行中…</div>':''}</div>
+          ${(!r.durationMin&&r.id===openSleepId)?'<div class="de" style="color:var(--p4)">进行中…</div>':''}</div>
           <div class="evrm" onclick="delRec('${r.id}')">✕</div></div>`;
       }else if(it.role==='wake'){
         h+=`<div class="ev"><div class="tm">${it.wt}</div><div class="dot k-sleep">🌅</div>
           <div class="bd" onclick="recDetail('${r.id}')" style="cursor:pointer"><div class="ti" style="font-weight:500">起床 <span style="color:var(--warm);font-weight:600">${fmtDurCN(r.durationMin)}</span></div></div>
           </div>`;
       }else{const gap=markIds[r.id]?agoTxt(r):'';
-        h+=`<div class="ev"><div class="tm">${dtime(r.dt)}</div>
+        let tmH=dtime(r.dt);
+        if(r.type==='feed_breast'){const sp=breastSpan(r);
+          if(sp&&dkey(sp.s)===dkey(sp.e))tmH=`${dtime(sp.s)}<div style="font-size:8.5px;color:#c9a0ae;line-height:1.2">~${dtime(sp.e)}</div>`;}
+        h+=`<div class="ev"><div class="tm">${tmH}</div>
           <div class="dot ${recCls(r)}">${(RTYPES[r.type]||RTYPES.other).i}</div>
           <div class="bd" onclick="recDetail('${r.id}')" style="cursor:pointer"><div class="ti" style="font-weight:500">${recDesc(r)}</div>${gap?`<div class="de" style="color:#c2647d;font-weight:600">${gap}</div>`:''}</div>
           <div class="evrm" onclick="delRec('${r.id}')">✕</div></div>`;
@@ -696,9 +709,9 @@ function renderDay(){
 }
 function napMinOnDay(day){
   const [nsH,nsM]=(DB.pref.napStart||'06:45').split(':').map(Number);const [neH,neM]=(DB.pref.napEnd||'19:00').split(':').map(Number);
-  const w0=new Date(day+'T00:00:00').getTime()+(nsH*60+nsM)*60000;const w1=new Date(day+'T00:00:00').getTime()+(neH*60+neM)*60000;
-  let t=0;DB.records.forEach(r=>{if(r.type!=='sleep'||!r.durationMin)return;const st=new Date(r.dt).getTime();const en=st+r.durationMin*60000;
-    const ov=Math.min(en,w1)-Math.max(st,w0);if(ov>0)t+=ov/60000;});return Math.round(t);}
+  const w0=(nsH*60+nsM),w1=(neH*60+neM);
+  let t=0;sleepIntsOnDay(day).forEach(([a,b])=>{const ov=Math.min(b,w1)-Math.max(a,w0);if(ov>0)t+=ov;});
+  return Math.round(t);}
 function daySumLine(date){
   const recs=DB.records.filter(r=>dkey(r.dt)===date);
   const agg={};recs.forEach(r=>{const a=agg[r.type]=agg[r.type]||{n:0,ml:0,dur:0,l:0,r:0};
@@ -757,19 +770,8 @@ function saveComplete(i){
   const hhmm=dt.slice(11,16);let s=c.ti,rec=null;
   if(c.k==='feed'){const ft=gv('c_ft');if(ft==='feed_breast'){const l=+gv('c_l')||0,r=+gv('c_r')||0;rec={type:'feed_breast',leftMin:l,rightMin:r};s=`母乳 左${l}右${r}`;}else{const ml=+gv('c_ml')||0;rec={type:ft,ml};s=`${RTYPES[ft].n} ${ml}ml`;}}
   else if(c.k==='meal'){const f=gv('c_food');rec={type:'feed_solid',food:f};s=`辅食 ${f||''}`.trim();}
-  else if(c.k==='sleep'){
-    const o=openSleepRec();
-    if(o){s='入睡(已有进行中睡眠)';}
-    else{rec={type:'sleep',durationMin:null};s='入睡';}}
-  else if(c.k==='wake'){
-    const o=openSleepRec();
-    if(o){const dur=Math.round((new Date(dayDate+'T'+hhmm).getTime()-new Date(o.dt).getTime())/60000);
-      if(dur>0&&dur<1440){o.durationMin=dur;s='起床 · 睡'+fmtDur(dur);}
-      else s='起床';}
-    else{const ss=findSleepStart(dayDate,i);
-      if(ss){const dur=Math.round((new Date(dayDate+'T'+hhmm).getTime()-new Date(ss.iso).getTime())/60000);
-        if(dur>0&&dur<1440){rec={type:'sleep',durationMin:dur,dt:ss.iso};s='起床 · 睡'+fmtDur(dur);}else s='起床';}
-      else s='起床';}}
+  else if(c.k==='sleep'){rec={type:'sleep'};s='入睡';}
+  else if(c.k==='wake'){rec={type:'wake'};s='起床';}
   else if(c.k==='out'){const d=+gv('c_dur')||0;if(d)rec={type:'walk',durationMin:d};s=c.ti;}
   else if(c.k==='care'){if(/洗澡/.test(c.ti))rec={type:'bath'};else if(/维/.test(c.ti))rec={type:'vitamin',note:c.ti};s=c.ti;}
   else s=c.ti;
@@ -834,7 +836,8 @@ const RTYPES={
   diaper_pee:{i:'💦',n:'尿尿',grp:'排泄',f:'pp'},
   diaper_poop:{i:'💩',n:'便便',grp:'排泄',f:'poop'},
   diaper_both:{i:'💦💩',n:'两项',grp:'排泄',f:'poop'},
-  sleep:{i:'😴',n:'睡眠',grp:'睡眠',f:'dur'},
+  sleep:{i:'😴',n:'睡觉',grp:'睡眠',f:'pp'},
+  wake:{i:'🌅',n:'起床',grp:'睡眠',f:'pp'},
   vitd3:{i:'⭐',n:'维生素D3',grp:'营养',f:'pp'},
   vitad:{i:'🌟',n:'维生素AD',grp:'营养',f:'pp'},
   probiotic:{i:'🍀',n:'益生菌',grp:'营养',f:'pp'},
@@ -871,9 +874,11 @@ function recDesc(r){
   if(r.type==='diaper_poop'||r.type==='diaper_both')return`${T.n}${r.amount?` 量:${r.amount}`:''}${r.hardness?` ${r.hardness}`:''}${r.color?` ${r.color}色`:''}`;
   if(['feed_formula','feed_pump','feed_bottle','drink','water'].includes(r.type))return`${T.n} <b>${r.ml||0}ml</b>`;
   if(['feed_solid','meal_main','snack'].includes(r.type))return`${T.n} ${r.food||''}${r.ml?` <small>${r.ml}ml</small>`:''}`;
-  if(r.type==='sleep'){if(r.durationMin==null)return`😴 睡觉 <small>进行中…</small>`;
-    const w=new Date(new Date(r.dt).getTime()+r.durationMin*60000);
-    return`睡眠 ${dtime(r.dt)} 入睡 → ${pad(w.getHours())}:${pad(w.getMinutes())} 起床（${fmtDurCN(r.durationMin)}）`;}
+  if(r.type==='sleep'){if(r.durationMin>0){const w=new Date(new Date(r.dt).getTime()+r.durationMin*60000);
+      return`睡眠 ${dtime(r.dt)} 入睡 → ${pad(w.getHours())}:${pad(w.getMinutes())} 起床（${fmtDurCN(r.durationMin)}）`;}
+    return`😴 睡觉`;}
+  if(r.type==='wake'){const i=wakePairInfo(r.id);
+    return `🌅 起床${i.dur?` <span style="color:var(--warm);font-weight:600">${fmtDurCN(i.dur)}</span>`:i.orphan?` <span style="color:#e67e22">⚠️</span> <small style="color:#e67e22">缺少对应的睡觉记录，可补记</small>`:''}`;}
   if(['walk','swim','bigmotor'].includes(r.type))return`${T.n} ${r.durationMin?fmtDur(r.durationMin):''}`;
   if(r.type==='temp')return`体温 <b>${r.tempC||''}℃</b>`;
   if(r.type==='growth')return[r.weightKg?`体重 ${r.weightKg}kg`:'',r.heightCm?`身高 ${r.heightCm}cm`:'',r.headCm?`头围 ${r.headCm}cm`:'',r.chestCm?`胸围 ${r.chestCm}cm`:'',r.footCm?`脚长 ${footDisp(r.footCm)}`:'',r.note||''].filter(Boolean).join(' ');
@@ -882,8 +887,40 @@ function recDesc(r){
   return T.n+(r.note?` <small>${r.note}</small>`:'');
 }
 function fmtDur(m){if(!m)return'';const h=Math.floor(m/60);return(h?h+'h':'')+(m%60?(m%60)+'m':(h?'':'0m'));}
-function sleepMinOnDay(day){const s0=new Date(day+'T00:00:00').getTime();const s1=s0+86400000;let t=0;
-  DB.records.forEach(r=>{if(r.type!=='sleep'||!r.durationMin)return;const st=new Date(r.dt).getTime();const en=st+r.durationMin*60000;const ov=Math.min(en,s1)-Math.max(st,s0);if(ov>0)t+=ov/60000;});return Math.round(t);}
+/* ---- 睡眠智能配对：睡觉/起床独立事件，每个起床自动匹配前面最近的未配对睡觉 ---- */
+function addMinDT(dt,m){const d=new Date(new Date(dt).getTime()+m*60000);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());}
+function sleepPairs(){
+  const evs=[];
+  DB.records.forEach(r=>{
+    if(r.type==='sleep'){evs.push({t:'s',dt:r.dt,id:r.id});
+      if(r.durationMin>0)evs.push({t:'w',dt:addMinDT(r.dt,r.durationMin),id:r.id,legacy:true});}
+    else if(r.type==='wake')evs.push({t:'w',dt:r.dt,id:r.id});});
+  evs.sort((a,b)=>a.dt<b.dt?-1:a.dt>b.dt?1:(a.t==='s'?-1:1));
+  const ints=[],orphans={};let cur=null;
+  evs.forEach(e=>{
+    if(e.t==='s')cur=e;
+    else{
+      if(cur){const dur=Math.round((new Date(e.dt)-new Date(cur.dt))/60000);
+        if(dur>0&&dur<1440)ints.push({s:cur.dt,e:e.dt,dur,sid:cur.id,wid:e.legacy?null:e.id});
+        else if(!e.legacy)orphans[e.id]=1;
+        cur=null;}
+      else if(!e.legacy)orphans[e.id]=1;}});
+  return {ints,open:cur,orphans};
+}
+function sleepIntsOnDay(day){
+  const s0=new Date(day+'T00:00:00').getTime(),s1=s0+86400000;
+  return sleepPairs().ints.map(iv=>{const a=Math.max(new Date(iv.s).getTime(),s0),b=Math.min(new Date(iv.e).getTime(),s1);
+    return b>a?[(a-s0)/60000,(b-s0)/60000]:null;}).filter(Boolean);
+}
+function sleepMinOnDay(day){return Math.round(sleepIntsOnDay(day).reduce((t,[a,b])=>t+b-a,0));}
+function wakePairInfo(id){const p=sleepPairs();
+  if(p.orphans[id])return {orphan:true};
+  const iv=p.ints.find(v=>v.wid===id);return iv?{dur:iv.dur}:{};}
+/* 母乳亲喂时间段：根据计时器「记录时间=开始/结束」设置推算起止 */
+function breastSpan(r){const dur=(r.leftMin||0)+(r.rightMin||0);if(!dur)return null;
+  const endIsDt=(DB.pref.tmRecAt||'end')==='end';
+  const s=endIsDt?addMinDT(r.dt,-dur):r.dt,e=endIsDt?r.dt:addMinDT(r.dt,dur);
+  return {s,e,dur};}
 function dkey(iso){return iso.slice(0,10);}
 function dtime(iso){return iso.slice(11,16);}
 function renderRec(){
@@ -942,26 +979,24 @@ function addRec(pre,editId){
       st('f_temp',r.tempC);st('f_w',r.weightKg);st('f_h',r.heightCm);st('f_head',r.headCm);st('f_chest',r.chestCm);st('f_foot',r.footCm);
       st('f_amt',r.amount);st('f_hard',r.hardness);st('f_color',r.color);st('f_note',r.note);st('f_skill',r.skill);}}
 }
-/* ---- 睡觉/起床 配对 ---- */
-function openSleepRec(){return DB.records.filter(r=>r.type==='sleep'&&r.durationMin==null).sort((a,b)=>b.dt.localeCompare(a.dt))[0];}
-function quickSleep(){const o=openSleepRec();
-  if(o){alert('已有进行中的睡眠（'+dtime(o.dt)+' 入睡）。宝宝醒了请点「起床」。');return;}
+/* ---- 睡觉/起床（独立事件，自动配对，支持乱序补记） ---- */
+function openSleepRec(){const p=sleepPairs();return p.open?DB.records.find(r=>r.id===p.open.id):null;}
+function quickSleep(){
   openSheet(`<h3>😴 睡觉<span class="x" onclick="closeSheet()">×</span></h3>
    <label class="fld"><span>入睡时间</span><input type="datetime-local" id="qs_dt" value="${nowDT()}"></label>
-   <div class="small muted">宝宝醒来后点「起床」，自动算出本次睡眠时长。</div>
+   <div class="small muted">睡觉和起床可以分开记、乱序补记，每个「起床」会自动匹配它前面最近的「睡觉」。</div>
    <div class="row" style="margin-top:10px"><button class="btn" onclick="startSleep()">保存</button><button class="btn ghost" onclick="closeSheet()">取消</button></div>`);}
 function startSleep(){const dt=gv('qs_dt');if(!dt){alert('请选时间');return;}
-  DB.records.push({id:uid(),dt,type:'sleep',durationMin:null,_by:CLOUD?CLOUD.member_id:null});save();closeSheet();rerender();}
+  DB.records.push({id:uid(),dt,type:'sleep',_by:CLOUD?CLOUD.member_id:null});save();closeSheet();rerender();}
 function quickWake(){const o=openSleepRec();
-  if(!o){alert('没有进行中的睡眠。可先点「睡觉」补一条入睡时间，或用「记一笔→睡眠」直接填时长。');return;}
   openSheet(`<h3>🌅 起床<span class="x" onclick="closeSheet()">×</span></h3>
-   <div class="small muted">${o.dt.replace('T',' ')} 入睡</div>
+   ${o?`<div class="small muted">${o.dt.replace('T',' ')} 入睡中</div>`:`<div class="small muted">当前没有进行中的睡觉记录；起床也可以先记，之后补记睡觉时间即可自动配对。</div>`}
    <label class="fld"><span>醒来时间</span><input type="datetime-local" id="qw_dt" value="${nowDT()}"></label>
-   <div class="row" style="margin-top:10px"><button class="btn" onclick="endSleep('${o.id}')">保存</button><button class="btn ghost" onclick="closeSheet()">取消</button></div>`);}
-function endSleep(id){const r=DB.records.find(x=>x.id===id);const dt=gv('qw_dt');if(!r||!dt)return;
-  const dur=Math.round((new Date(dt)-new Date(r.dt))/60000);
-  if(dur<=0||dur>1440){alert('醒来时间需晚于入睡时间且不超过 24 小时');return;}
-  r.durationMin=dur;save();closeSheet();rerender();}
+   <div class="row" style="margin-top:10px"><button class="btn" onclick="saveWake()">保存</button><button class="btn ghost" onclick="closeSheet()">取消</button></div>`);}
+function saveWake(){const dt=gv('qw_dt');if(!dt){alert('请选时间');return;}
+  const id=uid();DB.records.push({id,dt,type:'wake',_by:CLOUD?CLOUD.member_id:null});save();closeSheet();rerender();
+  const info=wakePairInfo(id);
+  if(info.orphan)alert('⚠️ 这次起床前面没有找到对应的「睡觉」记录，补记一条入睡时间即可自动配对。');}
 /* ---- 记录详情 ---- */
 function recDetail(id){const r=DB.records.find(x=>x.id===id);if(!r)return;const T=RTYPES[r.type]||RTYPES.other;
   const by=(r._by&&typeof MEMBERS!=='undefined'&&MEMBERS[r._by])?MEMBERS[r._by]:(r._by?'家人':'—');
@@ -989,6 +1024,18 @@ function smartGuide(){
     if(m>=0&&m<1440){
       if(m>=iv)tips.push(`🍼 距上次喂奶已 <b>${fmtDurCN(m)}</b>，超过 ${DB.pref.feedIntervalH||3} 小时间隔，<b>建议安排喂奶</b>`);
       else tips.push(`🍼 距上次喂奶 ${fmtDurCN(m)}，约 ${fmtDurCN(iv-m)} 后到喂奶时间`);}}
+  /* 起床后散步提醒（可在设置自定义分钟数，0=关闭） */
+  try{
+    const wmin=(DB.pref.walkAfterWakeMin===0||DB.pref.walkAfterWakeMin)?+DB.pref.walkAfterWakeMin:30;
+    if(wmin>0&&!open){
+      const p=sleepPairs();
+      const wakes=p.ints.map(iv=>iv.e).concat(DB.records.filter(r=>r.type==='wake'&&p.orphans[r.id]).map(r=>r.dt))
+        .filter(d=>dkey(d)===dayDate).sort();
+      if(wakes.length){const lastWk=wakes[wakes.length-1];
+        const hasWalk=DB.records.some(r=>r.type==='walk'&&r.dt>=lastWk);
+        const m=Math.round((now-new Date(lastWk))/60000);
+        if(!hasWalk&&m>=wmin&&m<360)tips.push(`🌳 宝宝起床已 ${fmtDurCN(m)}，可以带出去<b>散步</b>啦 <span class="muted">(起床${wmin}分钟后提醒，设置可调)</span>`);}}
+  }catch(e){}
   try{const {times}=computeDay(dayDate);const nm=nowMin();
     const nxt=times.find(t=>!t.done&&t.min>=nm-15);
     if(nxt)tips.push(`📅 按「${ROUTINES[ageToRoutineKey(ageInfo(dayDate).months)].label}」作息，接下来 ${fmtMin(nxt.min)} ${nxt.ti}`);}catch(e){}
@@ -1049,7 +1096,9 @@ function saveRec(){const t=document.getElementById('rty').value;const dt=gv('rdt
   if(gv('f_note'))r.note=gv('f_note');
   if(t==='achievement'&&gv('f_skill')){r.skill=gv('f_skill');DB.skills[r.skill]={status:'done',date:dkey(dt)};}
   if(EDIT_ID){const i=DB.records.findIndex(x=>x.id===EDIT_ID);
-    if(i>=0){r.id=EDIT_ID;r._by=DB.records[i]._by||r._by;DB.records[i]=r;}EDIT_ID=null;}
+    if(i>=0){r.id=EDIT_ID;r._by=DB.records[i]._by||r._by;
+      if(t==='sleep'&&DB.records[i].durationMin>0)r.durationMin=DB.records[i].durationMin;
+      DB.records[i]=r;}EDIT_ID=null;}
   else DB.records.push(r);
   save();closeSheet();rerender();
 }
@@ -1199,7 +1248,8 @@ function applyPrefUI(){
 }
 function saveSettings(){
   DB.profile.name=gv('s_name');DB.profile.birth=gv('s_birth');DB.profile.sex=gv('s_sex');
-  DB.pref.feedIntervalH=+gv('s_iv')||3;DB.pref.napStart=gv('s_ns')||'06:45';DB.pref.napEnd=gv('s_ne')||'19:00';
+  DB.pref.feedIntervalH=+gv('s_iv')||3;DB.pref.walkAfterWakeMin=gv('s_walk')===''?30:Math.max(0,+gv('s_walk')||0);
+  DB.pref.napStart=gv('s_ns')||'06:45';DB.pref.napEnd=gv('s_ne')||'19:00';
   DB.pref.ageMode=gv('s_age')||'age';DB.pref.dayBase=gv('s_db')||'0';
   DB.pref.recSize=gv('s_sz')||'m';DB.pref.footUnit=gv('s_fu')||'cm';
   applyPrefUI();save();closeSheet();renderHeader();go(CUR);
@@ -1209,7 +1259,8 @@ function openSettings(){
    <label class="fld"><span>宝宝名字</span><input type="text" id="s_name" value="${DB.profile.name||''}"></label>
    <label class="fld"><span>出生日期</span><input type="date" id="s_birth" value="${DB.profile.birth||''}"></label>
    <label class="fld"><span>性别（用于生长曲线）</span><select id="s_sex"><option value="boy"${DB.profile.sex!=='girl'?' selected':''}>男宝</option><option value="girl"${DB.profile.sex==='girl'?' selected':''}>女宝</option></select></label>
-   <div class="row"><label class="fld" style="flex:1"><span>喂奶提醒间隔(小时)</span><input type="number" step="0.5" id="s_iv" value="${DB.pref.feedIntervalH||3}"></label></div>
+   <div class="row"><label class="fld" style="flex:1"><span>喂奶间隔(小时)<br><span class="muted" style="font-weight:400">影响提醒和日程建议</span></span><input type="number" step="0.5" id="s_iv" value="${DB.pref.feedIntervalH||3}"></label>
+    <label class="fld" style="flex:1"><span>散步提醒<br><span class="muted" style="font-weight:400">起床后X分钟，0=关闭</span></span><input type="number" step="5" id="s_walk" value="${(DB.pref.walkAfterWakeMin===0||DB.pref.walkAfterWakeMin)?DB.pref.walkAfterWakeMin:30}"></label></div>
    <div class="row"><label class="fld" style="flex:1"><span>白天小觉·开始</span><input type="time" id="s_ns" value="${DB.pref.napStart||'06:45'}"></label>
     <label class="fld" style="flex:1"><span>白天小觉·结束</span><input type="time" id="s_ne" value="${DB.pref.napEnd||'19:00'}"></label></div>
    <div class="row"><label class="fld" style="flex:1"><span>年龄表示法</span><select id="s_age"><option value="age"${(DB.pref.ageMode||'age')==='age'?' selected':''}>年龄（X个月X天）</option><option value="week"${DB.pref.ageMode==='week'?' selected':''}>周龄（X周X天）</option></select></label>
@@ -1516,12 +1567,7 @@ function svgFrame(days,H,body,counts){
     g+=`<circle cx="${c-12}" cy="${H-14+li*9-2.5}" r="2.5" fill="${line.col}"/><text x="${c-7}" y="${H-14+li*9}" font-size="7" fill="#666">${t}</text>`;});});
   return g+body+`</svg>`;
 }
-function sleepSegsOnDay(d){
-  const s0=new Date(d+'T00:00:00').getTime(),s1=s0+86400000;const segs=[];
-  DB.records.forEach(r=>{if(r.type!=='sleep'||!r.durationMin)return;const st=new Date(r.dt).getTime(),en=st+r.durationMin*60000;
-    const a=Math.max(st,s0),b=Math.min(en,s1);if(b>a)segs.push([(a-s0)/60000,(b-s0)/60000]);});
-  return segs;
-}
+function sleepSegsOnDay(d){return sleepIntsOnDay(d);}
 function splitNap(seg){
   const [ns,ne]=[(DB.pref.napStart||'06:45'),(DB.pref.napEnd||'19:00')].map(t=>{const[a,b]=t.split(':').map(Number);return a*60+b;});
   const out=[];const[a,b]=seg;
@@ -1535,7 +1581,8 @@ function summaryHTML(days){
   let h=`<div class="card"><div class="row" style="justify-content:space-between"><h2>📊 摘要</h2>
     <div class="row"><button class="btn sm ghost" onclick="reviewEnd=shiftDate(reviewEnd,-7);renderReview()">◀</button>
     <span class="small muted">${days[0].slice(5).replace('-','月')}日~${days[6].slice(5).replace('-','月')}日</span>
-    <button class="btn sm ghost" onclick="reviewEnd=shiftDate(reviewEnd,7);if(reviewEnd>todayStr())reviewEnd=todayStr();renderReview()">▶</button></div></div>
+    <button class="btn sm ghost" onclick="reviewEnd=shiftDate(reviewEnd,7);if(reviewEnd>todayStr())reviewEnd=todayStr();renderReview()">▶</button>
+    <button class="btn sm sec" onclick="cumSheet()">🏆 累计</button></div></div>
    <div class="seg">${tabs.map(([k,n])=>`<button class="${SUMTAB===k?'on':''}" onclick="SUMTAB='${k}';renderReview()">${n}</button>`).join('')}</div>
    ${hasVol[SUMTAB]?`<div class="seg" style="margin-top:4px"><button class="${SUMVIEW==='time'?'on':''}" onclick="SUMVIEW='time';renderReview()">时间</button><button class="${SUMVIEW==='vol'?'on':''}" onclick="SUMVIEW='vol';renderReview()">量</button></div>`:''}
    ${SUMTAB==='all'?`<div class="row" style="justify-content:flex-end;margin-top:4px"><button class="btn sm ghost" onclick="sumFilterSheet()">过滤</button></div>`:''}
@@ -1548,8 +1595,12 @@ function sumChart(days){
     let body='';const cB=[],cF=[],cS=[];
     days.forEach((d,i)=>{const {c}=colGeo(i);let nb=0,nf=0,ns=0;
       recsOn(d).forEach(r=>{const col=SCOL[r.type];if(!col||!['feed_breast','feed_formula','feed_bottle','feed_pump','feed_solid','drink'].includes(r.type))return;
-        if(r.type==='feed_breast')nb++;else if(r.type==='feed_formula')nf++;else if(r.type==='feed_solid')ns++;
-        body+=`<circle cx="${c+(r.type==='feed_breast'?-5:r.type==='feed_formula'?5:0)}" cy="${yMin(toMin(dtime(r.dt)),330)}" r="3.4" fill="${col}" stroke="#fff" stroke-width="0.8"/>`;});
+        if(r.type==='feed_breast'){nb++;const sp=breastSpan(r);
+          if(sp){const sM=dkey(sp.s)===d?toMin(dtime(sp.s)):0;const eM=dkey(sp.e)===d?toMin(dtime(sp.e)):1440;
+            body+=`<rect x="${c-8.5}" y="${yMin(sM,330)}" width="6" height="${Math.max(2.5,yMin(eM,330)-yMin(sM,330))}" rx="2" fill="${col}" opacity="0.9"/>`;}
+          else body+=`<circle cx="${c-5}" cy="${yMin(toMin(dtime(r.dt)),330)}" r="3.4" fill="${col}" stroke="#fff" stroke-width="0.8"/>`;return;}
+        if(r.type==='feed_formula')nf++;else if(r.type==='feed_solid')ns++;
+        body+=`<circle cx="${c+(r.type==='feed_formula'?5:0)}" cy="${yMin(toMin(dtime(r.dt)),330)}" r="3.4" fill="${col}" stroke="#fff" stroke-width="0.8"/>`;});
       cB.push(nb||null);cF.push(nf||null);cS.push(ns||null);});
     return svgFrame(days,330,body,[{col:SCOL.feed_breast,vals:cB},{col:SCOL.feed_formula,vals:cF}])
       +`<div class="small muted" style="margin-top:4px"><span style="color:${SCOL.feed_breast}">●</span>母乳 <span style="color:${SCOL.feed_formula}">●</span>配方奶 <span style="color:${SCOL.feed_bottle}">●</span>瓶喂/挤奶 <span style="color:${SCOL.feed_solid}">●</span>辅食 <span style="color:${SCOL.drink}">●</span>饮料</div>`;
@@ -1579,12 +1630,17 @@ function sumChart(days){
       <span class="foodchip" style="background:#f7f4dd;color:#8f861f">平均瓶喂 ${aB}ml/天</span></div>`+g;
   }
   if(SUMTAB==='sleep'){
-    const tot=days.map(d=>sleepSegsOnDay(d).reduce((a,[s,e])=>a+e-s,0));
-    const naps=days.map(d=>napMinOnDay(d));
-    const avg=a=>{const v=a.filter(x=>x>0);return v.length?Math.round(v.reduce((x,y)=>x+y,0)/v.length):0;};
-    const badge=`<div class="row" style="flex-wrap:wrap;gap:4px;margin-bottom:6px">
-      <span class="foodchip" style="background:#eceffb;color:#5260a8">平均 ${fmtDurCN(avg(tot))||'—'}</span>
-      <span class="foodchip" style="background:#fef3e2;color:#b07b22">平均小觉 ${fmtDurCN(avg(naps))||'—'}</span></div>`;
+    const calc=ds=>{const t=ds.map(d=>Math.round(sleepIntsOnDay(d).reduce((a,[x,y])=>a+y-x,0)));
+      const n=ds.map(d=>napMinOnDay(d));return {tot:t,nap:n,night:t.map((v,i)=>Math.max(0,v-n[i]))};};
+    const cur=calc(days),prev=calc(days.map(d=>shiftDate(d,-7)));
+    const tot=cur.tot,naps=cur.nap;
+    const stat=a=>{const v=a.filter(x=>x>0);return v.length?{avg:Math.round(v.reduce((x,y)=>x+y,0)/v.length),min:Math.min(...v),max:Math.max(...v)}:null;};
+    const pct=(a,p)=>{if(!p||!p.avg||!a)return'';const v=Math.round((a-p.avg)/p.avg*100);
+      return v?` <span style="font-size:10px;color:${v>0?'#3d9d64':'#e67e22'}">${v>0?'↑':'↓'}${Math.abs(v)}%</span>`:' <span style="font-size:10px;color:#999">—</span>';};
+    const badge=`<div style="background:#fbf8f2;border:1px solid #f0e7da;border-radius:10px;padding:8px;margin-bottom:6px">
+      ${[['🛏️','总睡眠',stat(cur.tot),stat(prev.tot),'#5260a8'],['🌙','夜间',stat(cur.night),stat(prev.night),'#7e5cc0'],['🌞','白天小觉',stat(cur.nap),stat(prev.nap),'#b07b22']].map(([ic,n,s,sp,col])=>
+        s?`<div class="small" style="margin:2px 0"><b style="color:${col}">${ic}${n}</b> 平均 <b>${fmtDurCN(s.avg)}</b>${pct(s.avg,sp)} · 最小 ${fmtDurCN(s.min)}${pct(s.min,sp&&{avg:sp.min})} · 最大 ${fmtDurCN(s.max)}${pct(s.max,sp&&{avg:sp.max})}</div>`:'').join('')}
+      <div class="small muted" style="font-size:10px">↑↓ 为与上一个 7 天的比较</div></div>`;
     if(SUMVIEW==='time'){
       let body='';days.forEach((d,i)=>{const {c,w}=colGeo(i);const bw=w*0.62;
         sleepSegsOnDay(d).forEach(seg=>splitNap(seg).forEach(([a,b,k])=>{
@@ -1634,7 +1690,10 @@ function sumChart(days){
   days.forEach((d,i)=>{const {c,w}=colGeo(i);const bw=w*0.62;
     if(!SUMHIDE.sleep)sleepSegsOnDay(d).forEach(seg=>splitNap(seg).forEach(([a,b,k])=>{
       body+=`<rect x="${c-bw/2}" y="${yMin(a,330)}" width="${bw}" height="${Math.max(1.5,yMin(b,330)-yMin(a,330))}" rx="3" fill="${SCOL[k]}" opacity="0.35"/>`;}));
-    recsOn(d).forEach(r=>{if(r.type==='sleep'||SUMHIDE[r.type])return;const col=SCOL[r.type]||'#9e9e9e';
+    recsOn(d).forEach(r=>{if(r.type==='sleep'||r.type==='wake'||SUMHIDE[r.type])return;const col=SCOL[r.type]||'#9e9e9e';
+      if(r.type==='feed_breast'){const sp=breastSpan(r);
+        if(sp){const sM=dkey(sp.s)===d?toMin(dtime(sp.s)):0;const eM=dkey(sp.e)===d?toMin(dtime(sp.e)):1440;
+          body+=`<rect x="${c-bw/2}" y="${yMin(sM,330)}" width="${bw*0.45}" height="${Math.max(2.5,yMin(eM,330)-yMin(sM,330))}" rx="2" fill="${col}" opacity="0.85"/>`;return;}}
       body+=`<circle cx="${c}" cy="${yMin(toMin(dtime(r.dt)),330)}" r="3" fill="${col}" stroke="#fff" stroke-width="0.7"/>`;});});
   return svgFrame(days,330,body,[]);
 }
@@ -1649,6 +1708,32 @@ function sumFilterSheet(){
    <div class="row" style="margin-top:10px"><button class="btn" onclick="closeSheet()">完成</button></div>`);
 }
 function sumHideAll(){DB.records.forEach(r=>{SUMHIDE[r.type]=1;});SUMHIDE.sleep=1;renderReview();closeSheet();}
+/* ---- 累计统计（出生至今/近30天/近7天，适合截图分享） ---- */
+let CUMP='all';
+function cumSheet(){
+  const today=todayStr();
+  const from=CUMP==='7'?shiftDate(today,-6):CUMP==='30'?shiftDate(today,-29):(DB.profile.birth||today);
+  const recs=DB.records.filter(r=>{const d=dkey(r.dt);return d>=from&&d<=today;});
+  const cnt=t=>recs.filter(r=>r.type===t).length;
+  const sum=(t,f)=>recs.filter(r=>r.type===t).reduce((a,r)=>a+(r[f]||0),0);
+  const feedN=recs.filter(r=>['feed_breast','feed_formula','feed_bottle','feed_pump','feed_solid','meal_main','snack','drink','water'].includes(r.type)).length;
+  const brMin=sum('feed_breast','leftMin')+sum('feed_breast','rightMin');
+  const diaperN=cnt('diaper_pee')+cnt('diaper_poop')+cnt('diaper_both');
+  const f0=new Date(from+'T00:00:00').getTime(),t1=new Date(today+'T00:00:00').getTime()+86400000;
+  let slpMin=0,slpN=0;sleepPairs().ints.forEach(iv=>{const a=Math.max(new Date(iv.s).getTime(),f0),b=Math.min(new Date(iv.e).getTime(),t1);if(b>a){slpMin+=(b-a)/60000;slpN++;}});
+  const days=Math.max(1,Math.round((t1-f0)/86400000));
+  const card=(bg,items)=>`<div style="background:${bg};border-radius:16px;padding:13px 6px;margin-top:8px;color:#fff;display:flex;justify-content:space-around;text-align:center">${items.map(([ic,n,v,u])=>`<div style="min-width:60px"><div style="font-size:19px">${ic}</div><div style="font-size:10.5px;opacity:.92">${n}</div><div style="font-size:21px;font-weight:800;line-height:1.2">${v}</div><div style="font-size:9.5px;opacity:.85">${u}</div></div>`).join('')}</div>`;
+  openSheet(`<h3>🏆 累计统计<span class="x" onclick="closeSheet()">×</span></h3>
+   <div class="seg">${[['all','出生至今'],['30','近30天'],['7','近7天']].map(([k,n])=>`<button class="${CUMP===k?'on':''}" onclick="CUMP='${k}';cumSheet()">${n}</button>`).join('')}</div>
+   <div class="small muted" style="text-align:center;margin-top:6px"><b>${DB.profile.name||'宝宝'}</b> · ${from.replace(/-/g,'.')} ~ ${today.replace(/-/g,'.')} · 共 ${days} 天</div>
+   ${card('linear-gradient(135deg,#ff8a5c,#f4694b)',[['🍽️','喂食',feedN,'次'],['🤱','喂母乳',Math.round(brMin/60),'小时'],['🍼','瓶喂',sum('feed_bottle','ml'),'毫升'],['🥛','配方奶',sum('feed_formula','ml'),'毫升']])}
+   ${card('linear-gradient(135deg,#5c9ded,#3f7fd4)',[['🩲','换尿布',diaperN,'次'],['💦','尿尿',cnt('diaper_pee')+cnt('diaper_both'),'次'],['💩','便便',cnt('diaper_poop')+cnt('diaper_both'),'次']])}
+   ${card('linear-gradient(135deg,#58b37c,#3d9d64)',[['😴','睡眠',slpN,'次'],['🌙','总时长',Math.round(slpMin/60),'小时'],['📊','日均',fmtDurCN(Math.round(slpMin/days))||'—','']])}
+   ${card('linear-gradient(135deg,#a98a6b,#8d6e52)',[['🫙','挤奶',cnt('feed_pump'),'次'],['🥤','挤奶量',sum('feed_pump','ml'),'毫升'],['🥣','辅食',cnt('feed_solid'),'次']])}
+   ${card('linear-gradient(135deg,#9b7bd4,#7e5cc0)',[['🚶','散步',cnt('walk'),'次'],['🛁','洗澡',cnt('bath'),'次'],['🧸','早教',recs.filter(r=>r.type.startsWith('ee_')).length,'次'],['🏆','成就',cnt('achievement'),'个']])}
+   <div class="small muted" style="text-align:center;margin-top:8px">每一个数字都是爱 💕 截图即可分享 · Rootine 🌱</div>
+   <div class="row" style="margin-top:10px"><button class="btn" onclick="closeSheet()">关闭</button></div>`);
+}
 
 function renderReview(){
   if(!reviewEnd)reviewEnd=todayStr();
