@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>悠悠 · 状态牌</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#26221c;--sub:#8a8378;--line:#eceae5;--accent:#3d7a5c;--warn:#c07a2d;}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);color:var(--ink);padding:14px 14px calc(24px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto}
+header{display:flex;align-items:baseline;justify-content:space-between;padding:6px 2px 14px}
+h1{font-size:20px;font-weight:700;white-space:nowrap}
+#upd{font-size:12px;color:var(--sub);white-space:nowrap}
+.cards{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--card);border-radius:14px;padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.card .k{font-size:12px;color:var(--sub);letter-spacing:.5px;margin-bottom:4px;white-space:nowrap}
+.card .v{font-size:19px;font-weight:650;line-height:1.35;text-wrap:pretty}
+.card .s{font-size:13px;color:var(--sub);margin-top:4px;line-height:1.5;text-wrap:pretty}
+.fresh{margin:14px 2px 4px;font-size:12px;color:var(--sub);line-height:1.7;text-wrap:pretty}
+.fresh .stale{color:var(--warn);font-weight:600}
+h2{font-size:13px;color:var(--sub);font-weight:600;margin:18px 2px 8px;white-space:nowrap}
+.tl{background:var(--card);border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.row{display:flex;align-items:flex-start;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);min-height:44px}
+.row:last-child{border-bottom:none}
+.row .t{font-variant-numeric:tabular-nums;font-size:14px;color:var(--sub);white-space:nowrap;padding-top:1px;width:44px;flex:none}
+.row .mid{flex:1;min-width:0}
+.row .name{font-size:15px;font-weight:600;line-height:1.4}
+.row .det{font-size:13px;color:var(--sub);line-height:1.5;text-wrap:pretty}
+.row .quote{font-size:12px;color:#a89f92;margin-top:2px;line-height:1.5;text-wrap:pretty}
+.by{flex:none;font-size:11px;padding:2px 8px;border-radius:99px;background:#eef3ef;color:var(--accent);white-space:nowrap;margin-top:2px}
+.by.piyo{background:#f0eee9;color:#8a8378}
+.empty{padding:22px;text-align:center;color:var(--sub);font-size:14px}
+#err{display:none;margin:12px 2px;color:#b3452f;font-size:13px;text-wrap:pretty}
+</style></head><body>
+<header><h1>🌱 悠悠 · 状态牌</h1><span id="upd">…</span></header>
+<div id="err"></div>
+<div class="cards" id="cards"></div>
+<div class="fresh" id="fresh"></div>
+<div id="days"></div>
+<script>
+var TOKEN=new URLSearchParams(location.search).get('token')||'';
+var API='https://jddtovlvntdglfuezxdq.supabase.co/functions/v1/board?data=1&token=';
+var ICON={feed_formula:'🍼',feed_breast:'🤱',feed_pump:'🥛',feed_bottle:'🍼',feed_solid:'🥣',water:'💧',drink:'🧃',snack:'🍪',sleep:'😴',diaper_poop:'💩',diaper_pee:'💦',vitamin:'💊',bath:'🛁',walk:'🚶',temp:'🌡️',swim:'🏊',vaccine:'💉',hospital:'🏥',growth:'📏',note:'📝'};
+var LABEL={feed_formula:'配方奶',feed_breast:'母乳',feed_pump:'挤奶',feed_bottle:'瓶喂',feed_solid:'辅食',water:'喝水',drink:'饮料',snack:'点心',sleep:'睡眠',diaper_poop:'便便',diaper_pee:'尿尿',vitamin:'补剂',bath:'洗澡',walk:'散步',temp:'体温',swim:'游泳',vaccine:'疫苗',hospital:'医院',growth:'测量',note:'备注',achievement:'成就',bigmotor:'大运动',track:'追视追听',nail:'剪指甲',haircut:'理发'};
+function pad(n){return (n<10?'0':'')+n}
+function bj(ts){return new Date(new Date(ts).getTime()+8*3600e3)}
+function fmtT(ts){var d=bj(ts);return pad(d.getUTCHours())+':'+pad(d.getUTCMinutes())}
+function bjDate(ts){var d=bj(ts);return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate())}
+function ago(ts){var m=Math.max(0,Math.round((Date.now()-new Date(ts).getTime())/60000));if(m<1)return '刚刚';if(m<60)return m+' 分钟前';var h=Math.floor(m/60);if(h<24)return h+' 小时 '+(m%60)+' 分前';return Math.floor(h/24)+' 天前'}
+function durTxt(min){var h=Math.floor(min/60),m=min%60;return (h?h+' 小时 ':'')+m+' 分钟'}
+function detail(r){var d=r.data||{};
+ if(r.type==='feed_formula'){var s=(d.approx?'约':'')+(d.ml||'?')+'ml';if(d.prepared)s+='（冲'+d.prepared+(d.leftoverMl?'剩'+d.leftoverMl:'')+'）';return s}
+ if(r.type==='feed_breast'){if(d.leftMin!=null||d.rightMin!=null)return '左'+(d.leftMin||0)+'分 右'+(d.rightMin||0)+'分';if(d.min)return d.min+' 分钟';return ''}
+ if(r.type==='feed_solid'){return (d.food||'')+(d.ml?' · '+d.ml+'ml':'')}
+ if(r.type==='sleep'){return d.open?'睡着中…':(d.durationMin?durTxt(d.durationMin):'')}
+ if(r.type==='temp')return (d.tempC||'?')+'°C';
+ if(r.type==='water'||r.type==='drink')return d.ml?d.ml+'ml':'';
+ if(r.type==='walk')return d.durationMin?durTxt(d.durationMin):'';
+ if(r.type==='growth'){var ks=[];if(d.weightKg)ks.push(d.weightKg+'kg');if(d.heightCm)ks.push(d.heightCm+'cm');return ks.join(' · ')}
+ return ''}
+function who(r){var d=r.data||{};if(d.by)return {n:d.by,c:''};if((r.client_id||'').indexOf('piyo_')===0)return {n:'妈妈 · 手表',c:'piyo'};return {n:'—',c:'piyo'}}
+function esc(s){return String(s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function render(d){
+ var rs=d.records||[];var now=Date.now();var today=bjDate(now);
+ var feedTypes=['feed_formula','feed_breast','feed_solid','feed_bottle'];
+ var lastFeed=null,i;
+ for(i=0;i<rs.length;i++){if(feedTypes.indexOf(rs[i].type)>=0){lastFeed=rs[i];break}}
+ var lastSleep=null;for(i=0;i<rs.length;i++){if(rs[i].type==='sleep'){lastSleep=rs[i];break}}
+ var lastPoop=null;for(i=0;i<rs.length;i++){if(rs[i].type==='diaper_poop'){lastPoop=rs[i];break}}
+ var tFormula=0,tSolid=0,tBreast=0,tSleep=0,nPoop=0;
+ for(i=0;i<rs.length;i++){var r=rs[i];if(bjDate(r.start_at)!==today)continue;var dd=r.data||{};
+  if(r.type==='feed_formula')tFormula+=(+dd.ml||0);
+  if(r.type==='feed_solid')tSolid++;
+  if(r.type==='feed_breast')tBreast++;
+  if(r.type==='sleep')tSleep+=(+dd.durationMin||0);
+  if(r.type==='diaper_poop')nPoop++;}
+ var html='';
+ html+='<div class="card"><div class="k">🍼 吃</div><div class="v">'+(lastFeed?(LABEL[lastFeed.type]||lastFeed.type)+' '+esc(detail(lastFeed))+' · '+fmtT(lastFeed.start_at):'今天还没记录')+'</div><div class="s">'+(lastFeed?'距现在 '+ago(lastFeed.start_at)+'（'+esc(who(lastFeed).n)+'）· ':'')+'今日配方奶 '+tFormula+'ml · 辅食 '+tSolid+' 顿 · 亲喂 '+tBreast+' 次</div></div>';
+ var sleepV='今天还没记录',sleepS='今日睡眠累计 '+durTxt(tSleep);
+ if(lastSleep){var sd=lastSleep.data||{};
+  if(sd.open){sleepV='睡着中 · 从 '+fmtT(lastSleep.start_at)+' 起';sleepS='已睡 '+ago(lastSleep.start_at).replace('前','')+' · '+sleepS}
+  else if(sd.durationMin){var end=new Date(lastSleep.start_at).getTime()+sd.durationMin*60000;sleepV='醒着 · 上一觉 '+durTxt(sd.durationMin)+'（'+fmtT(lastSleep.start_at)+'–'+fmtT(end)+'）';sleepS='醒来 '+ago(end)+' · '+sleepS}
+  else{sleepV='上一觉 '+fmtT(lastSleep.start_at)}}
+ html+='<div class="card"><div class="k">😴 睡</div><div class="v">'+sleepV+'</div><div class="s">'+sleepS+'</div></div>';
+ html+='<div class="card"><div class="k">💩 换</div><div class="v">'+(lastPoop?'上次便便 '+fmtT(lastPoop.start_at)+' · '+ago(lastPoop.start_at):'今天还没记录')+'</div><div class="s">今日便便 '+nPoop+' 次</div></div>';
+ document.getElementById('cards').innerHTML=html;
+ var f='';
+ if(d.piyoSyncedAt){var stale=(now-new Date(d.piyoSyncedAt).getTime())>24*3600e3;
+  f+='手表流（Piyo）同步至 '+bjDate(d.piyoSyncedAt).slice(5)+' '+fmtT(d.piyoSyncedAt)+(stale?' · <span class="stale">此后妈妈可能有未同步记录</span>':'')+'<br>'}
+ f+=d.speakLastAt?('语音最近一条 '+ago(d.speakLastAt)):'语音还没有记录';
+ document.getElementById('fresh').innerHTML=f;
+ var yesterday=bjDate(now-24*3600e3);var groups={};groups[today]=[];groups[yesterday]=[];
+ for(i=0;i<rs.length;i++){var g=bjDate(rs[i].start_at);if(groups[g])groups[g].push(rs[i])}
+ var out='';var names={};names[today]='今天';names[yesterday]='昨天';
+ [today,yesterday].forEach(function(day){
+  out+='<h2>'+names[day]+' · '+day.slice(5)+'</h2><div class="tl">';
+  var list=groups[day];
+  if(!list.length){out+='<div class="empty">没有记录</div>'}
+  for(var j=0;j<list.length;j++){var r=list[j];var w=who(r);var isSpeak=(r.data||{}).src==='speak';
+   out+='<div class="row"><span class="t">'+fmtT(r.start_at)+'</span><div class="mid"><div class="name">'+(ICON[r.type]||'•')+' '+(LABEL[r.type]||r.type)+'</div>';
+   var det=detail(r);if(det)out+='<div class="det">'+esc(det)+'</div>';
+   if(isSpeak&&r.note)out+='<div class="quote">“'+esc(r.note)+'”</div>';
+   out+='</div><span class="by '+w.c+'">'+esc(w.n)+'</span></div>'}
+  out+='</div>'});
+ document.getElementById('days').innerHTML=out;
+ document.getElementById('upd').textContent='更新于 '+fmtT(now);
+}
+function load(){
+ if(!TOKEN){document.getElementById('err').style.display='block';document.getElementById('err').textContent='网址里缺 token 参数';return}
+ fetch(API+encodeURIComponent(TOKEN)).then(function(r){return r.json()}).then(function(d){
+  if(d.ok===false){document.getElementById('err').style.display='block';document.getElementById('err').textContent=d.msg||'加载失败';return}
+  document.getElementById('err').style.display='none';render(d)
+ }).catch(function(e){document.getElementById('err').style.display='block';document.getElementById('err').textContent='网络不通，稍后自动重试'})
+}
+load();setInterval(load,60000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)load()});
+</script></body></html>
