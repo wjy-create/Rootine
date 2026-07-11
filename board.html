@@ -336,6 +336,7 @@ function renderStat(){
   fixPad();
 }
 function gridH(){return Math.max(400, window.innerHeight - document.getElementById('hdr').offsetHeight - 168)}
+function sleepH(){return Math.max(340, window.innerHeight - document.getElementById('hdr').offsetHeight - 262)}
 function daySummaryHTML(rs,dateStr){
   var bN=0,bL=0,bR=0,bMin=0,fN=0,fMl=0,sN=0,sMl=0,slMin=0,napMin=0,poop=0,vit=0,bath=0,wt=null;
   rs.forEach(function(r){
@@ -424,7 +425,7 @@ function sleepBlocks(rs){
 }
 function gridHTML(rs,opt){
   var days=weekDays();
-  var h='<div class="gridwrap"><div class="grid" style="height:'+gridH()+'px">';
+  var h='<div class="gridwrap"><div class="grid" style="height:'+(opt.h||gridH())+'px">';
   for(var si=1;si<7;si+=2)h+='<div class="stripe" style="left:'+(si*100/7)+'%;width:'+(100/7)+'%"></div>';
   for(var hh=0;hh<=24;hh+=1){var pct=hh/24*100;
     h+='<div class="hline'+(hh%3===0?' h3':'')+'" style="top:'+pct+'%">'+(hh%3===0?'<span class="hlab">'+hh+'</span>':'')+'</div>'}
@@ -531,10 +532,13 @@ function renderSum(){
     var sm=state.sum.sleepMode||'time';
     h+='<div class="ctlrow"><span></span><div class="seg2"><button data-sm="time" class="'+(sm==='time'?'on':'')+'">时间</button><button data-sm="amount" class="'+(sm==='amount'?'on':'')+'">量</button></div><span></span></div>';
     var dayTot=function(ds){var t=0;rs.forEach(function(r){t+=sleepOverlapMin(r,ds)});return t};
+    var cnt2=function(ds){var t=Math.round(dayTot(ds));if(!t)return '—';
+      var th=Math.floor(t/60),tm=Math.floor(t%60/5)*5;
+      return '<b>'+th+'小时</b><br><b>'+tm+'分钟</b>'};
     if(sm==='time'){
-      h+='<div style="position:relative">'+avgHtml+gridHTML(rs,{types:[],sleep:true,counts:function(ds){var t=dayTot(ds);return t?'<b>'+durTxt5(t)+'</b>':'—'}})+'</div>';
+      h+='<div style="position:relative">'+avgHtml+gridHTML(rs,{types:[],sleep:true,h:sleepH(),counts:cnt2})+'</div>';
     }else{
-      var CH=Math.max(340, window.innerHeight - document.getElementById('hdr').offsetHeight - 255);
+      var CH=sleepH();
       h+='<div class="gridwrap" style="position:relative;padding:6px 4px 4px 26px">'+avgHtml;
       h+='<div style="position:relative;height:'+CH+'px;display:flex">';
       for(var si2=1;si2<7;si2+=2)h+='<div class="stripe" style="left:'+(si2*100/7)+'%;width:'+(100/7)+'%"></div>';
