@@ -19,12 +19,17 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 #dlabel{font-size:16px;font-weight:700;white-space:nowrap}
 #dpick{position:absolute;inset:0;opacity:0;width:100%;height:100%}
 #todayBtn{position:absolute;right:52px;top:8px;font-size:11px;border:1px solid rgba(255,255,255,.8);color:#fff;background:none;border-radius:99px;padding:2px 8px;display:none;z-index:2}
-#sumbar{background:#fff;border-bottom:1px solid var(--line);padding:6px 12px 5px}
-.sumwrap{display:flex;flex-wrap:wrap;gap:4px 12px}
-.sumit{font-size:11.5px;color:var(--ink);white-space:nowrap;line-height:1.6}
+#sumbar{background:#fff;border-bottom:1px solid var(--line);padding:6px 12px 5px;color:var(--ink)}
+.sumwrap{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.sumit{font-size:11.5px;color:var(--ink);white-space:nowrap;line-height:1.6;display:inline-flex;align-items:center;gap:3px}
 .sumit b{color:var(--pink);font-weight:600}
-.stat{display:flex;align-items:baseline;gap:8px;padding:2.5px 0;font-size:13.5px;line-height:1.5}
-.stat .sk{flex:none;font-size:11px;color:var(--sub);width:26px}
+.sumit .pic{width:18px;height:18px;margin:0}
+.sumit .pic.img img{width:18px;height:18px}
+.sumit .pic svg{width:12px;height:12px}
+.stat{display:flex;align-items:center;gap:8px;padding:2.5px 0;font-size:13.5px;line-height:1.5;color:var(--ink)}
+.stat .pic{width:22px;height:22px;margin:0;flex:none}
+.stat .pic.img img{width:22px;height:22px}
+.stat .pic svg{width:14px;height:14px}
 .stat b{color:var(--pink);font-weight:700}
 .stat .sm{color:var(--sub);font-size:11.5px}
 #subtabs{background:var(--pinkbg);display:none;padding:0 10px}
@@ -69,6 +74,13 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .avg{display:flex;flex-direction:column;gap:6px;align-items:flex-end;margin:0 4px 8px}
 .avg span{background:#fff;border:1px solid var(--line);border-radius:10px;padding:4px 10px;font-size:12px}
 .avg b{color:var(--pink)}
+.avgfloat{position:absolute;top:10px;right:12px;display:flex;flex-direction:column;gap:6px;z-index:3;align-items:flex-end}
+.avgfloat span{background:rgba(255,255,255,.95);border-radius:8px;padding:3px 9px;font-size:11.5px;white-space:nowrap}
+.avgfloat .an{border:1.5px solid var(--night);color:#4a5f9e}
+.avgfloat .ap{border:1.5px solid var(--nap);color:#a8632c}
+.sbar{position:absolute;bottom:0;left:13%;width:74%;display:flex;flex-direction:column;border-radius:7px 7px 0 0;overflow:hidden}
+.sbn{background:var(--night)}
+.sbp{background:var(--nap);display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;text-align:center;line-height:1.3;text-shadow:0 0 2px rgba(0,0,0,.2)}
 .gridwrap{position:relative;background:#fff;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:6px 4px 4px 26px;overflow:hidden}
 .grid{position:relative;display:flex;height:624px}
 .hline{position:absolute;left:0;right:0;border-top:1px dashed #eee;pointer-events:none}
@@ -180,7 +192,7 @@ function glyph(pt,col){
   default:return '<circle fill="#fff" cx="12" cy="12" r="4.5"/>';
  }}
 // 像素级 Piyo 原图标（icon/ 文件夹）；加载失败自动退回 SVG 徽章
-var PIC={sleep:'sleep',wake:'wake',feed_breast:'feed_breast',feed_formula:'feed_formula',feed_bottle:'feed_bottle',feed_pump:'feed_pump',feed_solid:'feed_solid',water:'water',drink:'drink',snack:'snack',meal:'meal',diaper_pee:'diaper_pee',diaper_poop:'diaper_poop',diaper_both:'diaper_both',vitamin:'vitamin',bath:'bath',walk:'walk',temp:'temp',swim:'swim',growth:'growth_weight',vaccine:'vaccine',hospital:'hospital',medicine:'medicine',note:'note',nail:'nail',haircut:'haircut',achievement:'achievement',bigmotor:'achievement',track:'achievement',other:'other'};
+var PIC={sleep:'sleep',wake:'wake',feed_breast:'feed_breast',feed_formula:'feed_formula',feed_bottle:'feed_bottle',feed_pump:'feed_pump',feed_solid:'feed_solid',water:'water',drink:'drink',snack:'snack',meal:'meal',diaper_pee:'diaper_pee',diaper_poop:'diaper_poop',diaper_both:'diaper_both',vitamin:'vitamin',bath:'bath',walk:'walk',walk_back:'walk',temp:'temp',swim:'swim',growth:'growth_weight',vaccine:'vaccine',hospital:'hospital',medicine:'medicine',note:'note',nail:'nail',haircut:'haircut',achievement:'achievement',bigmotor:'achievement',track:'achievement',other:'other'};
 var ICONS_OK=false;
 (function(){var im=new Image();im.onload=function(){ICONS_OK=true;if(state.view==='rec'&&state.data)renderRec();else if(state.view==='sum'&&state.sum.data)renderSum()};im.src='icon/sleep.png'})();
 function badge(pt){
@@ -270,18 +282,18 @@ function statusHTML(rs){
   // 睡：最近一条睡眠
   var sl=null;rs.forEach(function(r){if(r.type==='sleep'){if(!sl||new Date(r.start_at)>new Date(sl.start_at))sl=r}});
   if(sl){var sd=sl.data||{},st=new Date(sl.start_at).getTime();
-    if(sd.open)h+='<div class="stat"><span class="sk">睡</span><span>睡着中 · '+fmtT(st)+' 起 · 已睡 <b>'+durTxt5((now-st)/60000)+'</b></span></div>';
+    if(sd.open)h+='<div class="stat">'+badge('sleep')+'<span>睡着中 · '+fmtT(st)+' 起 · 已睡 <b>'+durTxt5((now-st)/60000)+'</b></span></div>';
     else if(sd.durationMin){var wk=st+sd.durationMin*60000;
-      h+='<div class="stat"><span class="sk">睡</span><span>'+fmtT(wk)+' 起床 · 已醒 <b>'+durTxt5((now-wk)/60000)+'</b><span class="sm">（上一觉 '+durTxt(sd.durationMin)+'）</span></span></div>'}}
+      h+='<div class="stat">'+badge('wake')+'<span>'+fmtT(wk)+' 起床 · 已醒 <b>'+durTxt5((now-wk)/60000)+'</b><span class="sm">（上一觉 '+durTxt(sd.durationMin)+'）</span></span></div>'}}
   // 吃：最近一次喂养
   var fd=null;rs.forEach(function(r){if(['feed_breast','feed_formula','feed_solid','feed_bottle'].indexOf(r.type)>=0){if(!fd||new Date(r.start_at)>new Date(fd.start_at))fd=r}});
   if(fd){var fdd=fd.data||{},ft=new Date(fd.start_at).getTime();
     var det=fd.type==='feed_breast'?breastPink(fdd):(fd.type==='feed_formula'?formulaPink(fdd):((fdd.ml?fdd.ml+'ml ':'')+(fdd.food||'')));
-    h+='<div class="stat"><span class="sk">吃</span><span>'+fmtT(ft)+' '+(LABEL[fd.type]||'')+' '+esc(det)+' · 距现在 <b>'+durTxt5((now-ft)/60000)+'</b></span></div>'}
+    h+='<div class="stat">'+badge(fd.type)+'<span>'+fmtT(ft)+' '+(LABEL[fd.type]||'')+' '+esc(det)+' · 距现在 <b>'+durTxt5((now-ft)/60000)+'</b></span></div>'}
   // 换：最近便便
   var pp=null;rs.forEach(function(r){if(r.type==='diaper_poop'){if(!pp||new Date(r.start_at)>new Date(pp.start_at))pp=r}});
   if(pp){var pt=new Date(pp.start_at).getTime();var day=bjDateStr(pt)===todayStr()?'':'昨天 ';
-    h+='<div class="stat"><span class="sk">便</span><span>上次便便 '+day+fmtT(pt)+' · <b>'+ago5(pt)+'</b>前</span></div>'}
+    h+='<div class="stat">'+badge('diaper_poop')+'<span>上次便便 '+day+fmtT(pt)+' · <b>'+ago5(pt)+'</b>前</span></div>'}
   return h||'<div class="stat"><span>今天还没有记录</span></div>';
 }
 function daySummaryHTML(rs,dateStr){
@@ -298,13 +310,13 @@ function daySummaryHTML(rs,dateStr){
     if(r.type==='growth'&&d.weightKg)wt=d.weightKg;
   });
   var out=[];
-  if(bN)out.push('母乳'+bN+'次 <b>'+(bL+bMin)+'/'+bR+'分</b>');
-  if(fN)out.push('配方奶'+fN+'次 <b>'+fMl+'ml</b>');
-  if(sN)out.push('辅食'+sN+'次 <b>'+(sMl?sMl+'ml':'')+'</b>');
-  if(slMin)out.push('睡眠<b>'+durTxt5(slMin)+'</b>'+(napMin?'（小觉'+durTxt5(napMin)+'）':''));
-  if(poop)out.push('便便'+poop+'次');
-  if(vit)out.push('维D'+vit);if(bath)out.push('洗澡'+bath);
-  if(wt)out.push('体重<b>'+wt+'kg</b>');
+  if(bN)out.push(badge('feed_breast')+bN+'次 <b>'+(bL+bMin)+'/'+bR+'分</b>');
+  if(fN)out.push(badge('feed_formula')+fN+'次 <b>'+fMl+'ml</b>');
+  if(sN)out.push(badge('feed_solid')+sN+'次 <b>'+(sMl?sMl+'ml':'')+'</b>');
+  if(slMin)out.push(badge('sleep')+'<b>'+durTxt5(slMin)+'</b>'+(napMin?'（小觉'+durTxt5(napMin)+'）':''));
+  if(poop)out.push(badge('diaper_poop')+poop+'次');
+  if(vit)out.push(badge('vitamin')+''+vit);if(bath)out.push(badge('bath')+''+bath);
+  if(wt)out.push(badge('growth')+'<b>'+wt+'kg</b>');
   return '<div class="sumwrap">'+(out.length?out.map(function(s){return '<span class="sumit">'+s+'</span>'}).join(''):'<span class="sumit" style="color:var(--sub)">这一天还没有记录</span>')+'</div>';
 }
 function renderFresh(d){
@@ -467,14 +479,41 @@ function renderSum(){
       rs.forEach(function(r){if(r.type!=='sleep')return;var ov=sleepOverlapMin(r,ds);if(!ov)return;t+=ov;if(isNapRec(r))np+=ov});
       if(t>0){tots.push(t);naps.push(np)}
     });
+    var avgHtml='';
     if(tots.length){
       var avgT=tots.reduce(function(a,b){return a+b},0)/tots.length;
       var avgN=naps.reduce(function(a,b){return a+b},0)/naps.length;
-      h+='<div class="avg"><span>平均睡眠 <b>'+durTxt(avgT)+'</b></span><span>平均小觉 <b>'+durTxt(avgN)+'</b></span><span style="border:none;background:none;font-size:10px;color:var(--sub)">均值截至昨天 · 按自然日0点切分</span></div>';
+      avgHtml='<div class="avgfloat"><span class="an">平均 '+durTxt(avgT)+'</span><span class="ap">平均 '+durTxt(avgN)+'</span></div>';
     }
-    h+=gridHTML(rs,{types:[],sleep:true,counts:function(ds){
-      var t=0;rs.forEach(function(r){t+=sleepOverlapMin(r,ds)});
-      return t?'<b>'+durTxt5(t)+'</b>':'—'}});
+    var sm=state.sum.sleepMode||'time';
+    h+='<div class="ctlrow"><span></span><div class="seg2"><button data-sm="time" class="'+(sm==='time'?'on':'')+'">时间</button><button data-sm="amount" class="'+(sm==='amount'?'on':'')+'">量</button></div><span></span></div>';
+    var dayTot=function(ds){var t=0;rs.forEach(function(r){t+=sleepOverlapMin(r,ds)});return t};
+    if(sm==='time'){
+      h+='<div style="position:relative">'+avgHtml+gridHTML(rs,{types:[],sleep:true,counts:function(ds){var t=dayTot(ds);return t?'<b>'+durTxt5(t)+'</b>':'—'}})+'</div>';
+    }else{
+      var CH=440;
+      h+='<div class="gridwrap" style="position:relative;padding:6px 4px 4px 26px">'+avgHtml;
+      h+='<div style="position:relative;height:'+CH+'px;display:flex">';
+      for(var hh2=0;hh2<=24;hh2+=3){var bt=(hh2/24)*100;
+        h+='<div class="hline h3" style="bottom:'+bt+'%;top:auto"><span class="hlab" style="top:-6px">'+hh2+'</span></div>'}
+      days.forEach(function(ds,i){
+        var tot=dayTot(ds),np=0;
+        rs.forEach(function(r){if(r.type==='sleep'&&isNapRec(r))np+=sleepOverlapMin(r,ds)});
+        var night=Math.max(0,tot-np);
+        var totPx=tot/1440*CH,napPx=np/1440*CH;
+        h+='<div class="col'+(i%2?' alt':'')+'" style="position:relative">';
+        if(tot>0){h+='<div class="sbar" style="height:'+totPx+'px">';
+          h+='<div class="sbn" style="height:'+(totPx-napPx)+'px"></div>';
+          if(napPx>0)h+='<div class="sbp" style="height:'+napPx+'px">'+(napPx>=32?durTxt5(np).replace('小时','小时<br>'):'')+'</div>';
+          h+='</div>'}
+        h+='</div>';
+      });
+      h+='</div></div><div class="daylabs">';
+      days.forEach(function(ds){var dow=new Date(ymdUtc(ds)).getUTCDay();var t=dayTot(ds);
+        h+='<div class="daylab'+(dow===6?' sat':'')+(dow===0?' sun':'')+'">'+mdLabel(ds)+'<div class="cnt">'+(t?'<b>'+durTxt5(t)+'</b>':'—')+'</div></div>'});
+      h+='</div>';
+      h+='<div class="legend"><span class="lg"><i style="background:var(--night)"></i>夜觉</span><span class="lg"><i style="background:var(--nap)"></i>小觉</span><span style="font-size:10px">均值截至昨天 · 自然日0点切分</span></div>';
+    }
   }
   v.innerHTML=h;
   var mb=document.getElementById('moonBtn');
@@ -491,6 +530,7 @@ function renderSum(){
       renderSum()}});
   }}
   document.querySelectorAll('.seg2 button[data-fm]').forEach(function(b){b.onclick=function(){state.sum.feedMode=b.getAttribute('data-fm');renderSum()}});
+  document.querySelectorAll('.seg2 button[data-sm]').forEach(function(b){b.onclick=function(){state.sum.sleepMode=b.getAttribute('data-sm');renderSum()}});
   document.querySelectorAll('.seg2 button[data-gm]').forEach(function(b){b.onclick=function(){state.growth.mode=b.getAttribute('data-gm');renderSum()}});
   document.querySelectorAll('.seg2 button[data-gr]').forEach(function(b){b.onclick=function(){state.growth.range=+b.getAttribute('data-gr');renderSum()}});
   fixPad();
@@ -519,14 +559,18 @@ function growHTML(){
   return h;
 }
 function chartSVG(mode,R,pts){
-  var W=360,H=310,L=36,Rt=324,T=14,B=278;
+  var W=360,H=436,L=36,Rt=324,T=16,B=396;
   function xs(m){return L+(m/R)*(Rt-L)}
   function mkYs(lo,hi){return function(v){return B-(v-lo)/(hi-lo)*(B-T)}}
   var s='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;display:block">';
-  // 纵横网格
+  // 竖向网格 + 月龄
   var step=(R===12)?1:2;
   for(var m=0;m<=R;m+=step)s+='<line x1="'+xs(m)+'" y1="'+T+'" x2="'+xs(m)+'" y2="'+B+'" stroke="#f0ece6" stroke-width="1"/>'+
     '<text x="'+xs(m)+'" y="'+(B+14)+'" font-size="9" fill="#9a938a" text-anchor="middle">'+m+'</text>';
+  // 横向网格（跟随左轴刻度）
+  function hgrid(lo,hi,stepV){var out='';var ys=mkYs(lo,hi);
+    for(var v=Math.ceil(lo);v<=hi;v+=stepV)out+='<line x1="'+L+'" y1="'+ys(v)+'" x2="'+Rt+'" y2="'+ys(v)+'" stroke="#eee7e0" stroke-width="1" stroke-dasharray="3 3"/>';
+    return out}
   s+='<text x="'+Rt+'" y="'+(B+26)+'" font-size="9" fill="#9a938a" text-anchor="end">(月龄)</text>';
   function band(sr,lo,hi,ys,color){
     var p='M';
@@ -552,6 +596,7 @@ function chartSVG(mode,R,pts){
   if(mode==='wh'){
     var wLo=2,wHi=WHO.wt.hi[R]+1,hLo=44,hHi=WHO.ht.hi[R]+2;
     var ysW=mkYs(wLo,wHi),ysH=mkYs(hLo,hHi);
+    s+=hgrid(wLo,wHi,1);
     s+=band(WHO.ht,hLo,hHi,ysH,'rgba(120,165,220,.22)');
     s+=band(WHO.wt,wLo,wHi,ysW,'rgba(140,190,120,.26)');
     s+=series(pts.ht,ysH,'#4a84c6');
@@ -562,6 +607,7 @@ function chartSVG(mode,R,pts){
     s+='<text x="'+(Rt-46)+'" y="'+(B-16)+'" font-size="13" fill="#5c9a4a" font-weight="600">体重</text>';
   }else{
     var dLo=30,dHi=WHO.hd.hi[R]+1,ysD=mkYs(dLo,dHi);
+    s+=hgrid(dLo,dHi,2);
     s+=band(WHO.hd,dLo,dHi,ysD,'rgba(150,130,210,.24)');
     s+=series(pts.hd,ysD,'#7d6bbf');
     s+=yAxis(dLo,dHi,2,L-4,'end','#7d6bbf')+'<text x="'+(L-4)+'" y="'+(T-2)+'" font-size="9" fill="#7d6bbf" text-anchor="end">(cm)</text>';
