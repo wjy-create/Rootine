@@ -19,19 +19,24 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 #dlabel{font-size:16px;font-weight:700;white-space:nowrap}
 #dpick{position:absolute;inset:0;opacity:0;width:100%;height:100%}
 #todayBtn{position:absolute;right:52px;top:8px;font-size:11px;border:1px solid rgba(255,255,255,.8);color:#fff;background:none;border-radius:99px;padding:2px 8px;display:none;z-index:2}
-#sumbar{background:#fff;border-bottom:1px solid var(--line);padding:6px 12px 5px;color:var(--ink)}
-.sumwrap{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
-.sumit{font-size:11.5px;color:var(--ink);white-space:nowrap;line-height:1.6;display:inline-flex;align-items:center;gap:3px}
-.sumit b{color:var(--pink);font-weight:600}
-.sumit .pic{width:18px;height:18px;margin:0}
-.sumit .pic.img img{width:18px;height:18px}
-.sumit .pic svg{width:12px;height:12px}
-.stat{display:flex;align-items:center;gap:8px;padding:2.5px 0;font-size:13.5px;line-height:1.5;color:var(--ink)}
-.stat .pic{width:22px;height:22px;margin:0;flex:none}
-.stat .pic.img img{width:22px;height:22px}
-.stat .pic svg{width:14px;height:14px}
-.stat b{color:var(--pink);font-weight:700}
-.stat .sm{color:var(--sub);font-size:11.5px}
+#sumbar{background:#fff;border-bottom:1px solid var(--line);padding:7px 12px 6px;color:var(--ink)}
+.sumwrap{display:flex;flex-wrap:wrap;gap:5px 14px;align-items:center}
+.sumit{color:var(--ink);white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.sumit .s2{font-size:11px;line-height:1.45}
+.sumit b{color:var(--pink);font-weight:500}
+.sumit .pic{width:30px;height:30px;margin:0}
+.sumit .pic.img img{width:30px;height:30px}
+.sumit .pic svg{width:18px;height:18px}
+/* 状态牌卡片 */
+#statview{display:none;padding:10px 10px 16px}
+.cards{display:flex;flex-direction:column;gap:10px}
+.card{background:#fff;border-radius:16px;padding:14px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.card .ck{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--sub);margin-bottom:6px}
+.card .ck .pic{width:26px;height:26px;margin:0}
+.card .ck .pic.img img{width:26px;height:26px}
+.card .cv{font-size:19px;font-weight:600;line-height:1.4;text-wrap:pretty}
+.card .cv b{color:var(--pink)}
+.card .cs{font-size:12.5px;color:var(--sub);margin-top:5px;line-height:1.6;text-wrap:pretty}
 #subtabs{background:var(--pinkbg);display:none;padding:0 10px}
 .stab{border:none;background:none;color:rgba(255,255,255,.85);font-size:14px;font-weight:600;padding:7px 14px;border-radius:10px 10px 0 0}
 .stab.on{background:#fff;color:var(--pink)}
@@ -41,7 +46,7 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 #tl{background:#fff;margin:8px 8px 16px;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .row{display:flex;align-items:flex-start;gap:9px;padding:9px 12px;border-bottom:1px solid var(--line)}
 .row:last-child{border-bottom:none}
-.row .t{font-variant-numeric:tabular-nums;font-size:14px;color:var(--sub);white-space:nowrap;width:44px;flex:none;padding-top:6px;text-align:right}
+.row .t{font-variant-numeric:tabular-nums;font-size:15px;color:#6f6a63;white-space:nowrap;width:46px;flex:none;padding-top:6px;text-align:right}
 .pic{width:30px;height:30px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;margin-top:1px}
 .pic svg{width:19px;height:19px;display:block}
 .pic.img{background:none!important;border-radius:0}
@@ -50,9 +55,9 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .pic.dia{border-radius:7px;transform:rotate(45deg)}
 .pic.dia svg{transform:rotate(-45deg)}
 .row .mid{flex:1;min-width:0;padding-top:3px}
-.row .l1{font-size:15px;line-height:1.45}
-.row .l1 .nm{font-weight:600}
-.row .l1 .pk{color:var(--pink);font-weight:600;margin-left:8px}
+.row .l1{font-size:16px;line-height:1.45}
+.row .l1 .nm{font-weight:400}
+.row .l1 .pk{color:var(--pink);font-weight:500;margin-left:9px}
 .row .l2{font-size:12.5px;color:var(--sub);line-height:1.5;text-wrap:pretty}
 .row .qt{font-size:11.5px;color:#b8b0a5;line-height:1.5;text-wrap:pretty}
 .row .gap{font-size:11.5px;color:var(--pink);opacity:.85;line-height:1.7}
@@ -82,7 +87,7 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .sbn{background:var(--night)}
 .sbp{background:var(--nap);display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;text-align:center;line-height:1.3;text-shadow:0 0 2px rgba(0,0,0,.2)}
 .gridwrap{position:relative;background:#fff;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:6px 4px 4px 26px;overflow:hidden}
-.grid{position:relative;display:flex;height:624px}
+.grid{position:relative;display:flex}
 .hline{position:absolute;left:0;right:0;border-top:1px dashed #eee;pointer-events:none}
 .hline.h3{border-top:1px solid #e3ddd6}
 .hlab{position:absolute;left:-22px;top:-7px;font-size:10px;color:var(--sub);width:18px;text-align:right}
@@ -140,12 +145,14 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 <div id="main">
   <div style="height:1px" id="hdrpad"></div>
   <div id="err"></div>
+  <div id="statview"><div class="cards" id="statcards"></div></div>
   <div id="tl"></div>
   <div id="sumview"></div>
 </div>
 
 <div id="tabbar">
-  <button class="tab on" data-tab="rec">记录</button>
+  <button class="tab on" data-tab="stat">状态</button>
+  <button class="tab" data-tab="rec">记录</button>
   <button class="tab" data-tab="sum">摘要</button>
   <button class="tab" data-tab="menu">菜单</button>
 </div>
@@ -276,26 +283,59 @@ function buildNodes(rs){
 }
 function who(r){var d=r.data||{};if(d.by)return{n:d.by,c:''};if((r.client_id||'').indexOf('piyo_')===0)return{n:'妈妈·手表',c:'piyo'};return{n:'',c:'piyo'}}
 
-// ── 头部：今天=状态牌（最关键提醒），其他日=当日摘要 ──
-function statusHTML(rs){
-  var now=Date.now(),h='';
-  // 睡：最近一条睡眠
-  var sl=null;rs.forEach(function(r){if(r.type==='sleep'){if(!sl||new Date(r.start_at)>new Date(sl.start_at))sl=r}});
-  if(sl){var sd=sl.data||{},st=new Date(sl.start_at).getTime();
-    if(sd.open)h+='<div class="stat">'+badge('sleep')+'<span>睡着中 · '+fmtT(st)+' 起 · 已睡 <b>'+durTxt5((now-st)/60000)+'</b></span></div>';
-    else if(sd.durationMin){var wk=st+sd.durationMin*60000;
-      h+='<div class="stat">'+badge('wake')+'<span>'+fmtT(wk)+' 起床 · 已醒 <b>'+durTxt5((now-wk)/60000)+'</b><span class="sm">（上一觉 '+durTxt(sd.durationMin)+'）</span></span></div>'}}
-  // 吃：最近一次喂养
-  var fd=null;rs.forEach(function(r){if(['feed_breast','feed_formula','feed_solid','feed_bottle'].indexOf(r.type)>=0){if(!fd||new Date(r.start_at)>new Date(fd.start_at))fd=r}});
-  if(fd){var fdd=fd.data||{},ft=new Date(fd.start_at).getTime();
+// ── 状态牌（一级页）：吃 / 睡 / 换 三张卡 ──
+function statCards(rs){
+  var now=Date.now(),today=todayStr(),h='';
+  function pick(types){var b=null;rs.forEach(function(r){if(types.indexOf(r.type)<0)return;var t=new Date(r.start_at).getTime();if(!b||t>b._t){r._t=t;b=r}});return b}
+  // 今日累计
+  var tF=0,tS=0,tSml=0,tB=0,tBL=0,tBR=0,nPoop=0,slMin=0,napMin=0;
+  rs.forEach(function(r){
+    if(r.type==='sleep'){var ov=sleepOverlapMin(r,today);if(ov){slMin+=ov;if(isNapRec(r))napMin+=ov}return}
+    if(bjDateStr(new Date(r.start_at).getTime())!==today)return;
+    var d=r.data||{};
+    if(r.type==='feed_formula')tF+=(+d.ml||0);
+    if(r.type==='feed_solid'){tS++;tSml+=(+d.ml||0)}
+    if(r.type==='feed_breast'){tB++;if(d.open&&d.segs){var so=segSums(d.segs);tBL+=so.L;tBR+=so.R}else{tBL+=(+d.leftMin||0)+(+d.min||0);tBR+=(+d.rightMin||0)}}
+    if(r.type==='diaper_poop')nPoop++;
+  });
+  // 吃
+  var fd=pick(['feed_breast','feed_formula','feed_solid','feed_bottle']);
+  var cv='今天还没有喂养记录',cs='';
+  if(fd){var fdd=fd.data||{};
     var det=fd.type==='feed_breast'?breastPink(fdd):(fd.type==='feed_formula'?formulaPink(fdd):((fdd.ml?fdd.ml+'ml ':'')+(fdd.food||'')));
-    h+='<div class="stat">'+badge(fd.type)+'<span>'+fmtT(ft)+' '+(LABEL[fd.type]||'')+' '+esc(det)+' · 距现在 <b>'+durTxt5((now-ft)/60000)+'</b></span></div>'}
-  // 换：最近便便
-  var pp=null;rs.forEach(function(r){if(r.type==='diaper_poop'){if(!pp||new Date(r.start_at)>new Date(pp.start_at))pp=r}});
-  if(pp){var pt=new Date(pp.start_at).getTime();var day=bjDateStr(pt)===todayStr()?'':'昨天 ';
-    h+='<div class="stat">'+badge('diaper_poop')+'<span>上次便便 '+day+fmtT(pt)+' · <b>'+ago5(pt)+'</b>前</span></div>'}
-  return h||'<div class="stat"><span>今天还没有记录</span></div>';
+    cv=fmtT(fd._t)+' '+(LABEL[fd.type]||'')+' '+esc(det)+'<br>距现在 <b>'+durTxt5((now-fd._t)/60000)+'</b>'}
+  cs='今日 配方奶 '+tF+'ml · 辅食 '+tS+' 顿'+(tSml?'（'+tSml+'ml）':'')+' · 亲喂 '+tB+' 次';
+  if(tBL||tBR)cs+='<br>亲喂 左'+tBL+'分 右'+tBR+'分 · 下顿先喂'+(tBL<tBR?'左':(tBR<tBL?'右':'任一'))+'边';
+  h+='<div class="card"><div class="ck">'+badge('feed_formula')+'吃</div><div class="cv">'+cv+'</div><div class="cs">'+cs+'</div></div>';
+  // 睡
+  var sl=pick(['sleep']);cv='今天还没有睡眠记录';cs='今日累计 '+durTxt5(slMin)+(napMin?'（小觉 '+durTxt5(napMin)+'）':'');
+  var slIcon='sleep';
+  if(sl){var sd=sl.data||{};
+    if(sd.open){cv='睡着中 · '+fmtT(sl._t)+' 起<br>已睡 <b>'+durTxt5((now-sl._t)/60000)+'</b>'}
+    else if(sd.durationMin){var wk=sl._t+sd.durationMin*60000;slIcon='wake';
+      cv=fmtT(wk)+' 起床<br>已醒 <b>'+durTxt5((now-wk)/60000)+'</b>';
+      cs='上一觉 '+durTxt(sd.durationMin)+' · '+cs}}
+  h+='<div class="card"><div class="ck">'+badge(slIcon)+'睡</div><div class="cv">'+cv+'</div><div class="cs">'+cs+'</div></div>';
+  // 换
+  var pp=pick(['diaper_poop']);cv='今天还没有便便';
+  if(pp){var day=bjDateStr(pp._t)===today?'':'昨天 ';
+    cv='上次便便 '+day+fmtT(pp._t)+'<br>距现在 <b>'+ago5(pp._t)+'</b>'}
+  h+='<div class="card"><div class="ck">'+badge('diaper_poop')+'换</div><div class="cv">'+cv+'</div><div class="cs">今日便便 '+nPoop+' 次</div></div>';
+  return h;
 }
+function renderStat(){
+  var d=state.data;if(!d)return;
+  BIRTH=(d.baby&&d.baby.birth)||BIRTH;
+  var ds=todayStr(),p=ds.split('-');
+  document.getElementById('dlabel').textContent='今天 · '+(+p[1])+'月'+(+p[2])+'日 周'+weekday(ds);
+  document.getElementById('babyline').textContent='🌱 '+((d.baby&&d.baby.name)||'宝宝')+' · '+weekAge(ds);
+  document.getElementById('todayBtn').style.display='none';
+  document.getElementById('sumbar').innerHTML='';
+  renderFresh(d);
+  document.getElementById('statcards').innerHTML=statCards(d.records||[]);
+  fixPad();
+}
+function gridH(){return Math.max(400, window.innerHeight - document.getElementById('hdr').offsetHeight - 168)}
 function daySummaryHTML(rs,dateStr){
   var bN=0,bL=0,bR=0,bMin=0,fN=0,fMl=0,sN=0,sMl=0,slMin=0,napMin=0,poop=0,vit=0,bath=0,wt=null;
   rs.forEach(function(r){
@@ -310,13 +350,14 @@ function daySummaryHTML(rs,dateStr){
     if(r.type==='growth'&&d.weightKg)wt=d.weightKg;
   });
   var out=[];
-  if(bN)out.push(badge('feed_breast')+bN+'次 <b>'+(bL+bMin)+'/'+bR+'分</b>');
-  if(fN)out.push(badge('feed_formula')+fN+'次 <b>'+fMl+'ml</b>');
-  if(sN)out.push(badge('feed_solid')+sN+'次 <b>'+(sMl?sMl+'ml':'')+'</b>');
-  if(slMin)out.push(badge('sleep')+'<b>'+durTxt5(slMin)+'</b>'+(napMin?'（小觉'+durTxt5(napMin)+'）':''));
-  if(poop)out.push(badge('diaper_poop')+poop+'次');
-  if(vit)out.push(badge('vitamin')+''+vit);if(bath)out.push(badge('bath')+''+bath);
-  if(wt)out.push(badge('growth')+'<b>'+wt+'kg</b>');
+  function mk(bt,l1,l2){return badge(bt)+'<span class="s2">'+l1+(l2?'<br><b>'+l2+'</b>':'')+'</span>'}
+  if(bN)out.push(mk('feed_breast',bN+'次',(bL+bMin)+'/'+bR+'分'));
+  if(fN)out.push(mk('feed_formula',fN+'次',fMl+'ml'));
+  if(sN)out.push(mk('feed_solid',sN+'次',sMl?sMl+'ml':''));
+  if(slMin)out.push(mk('sleep',durTxt5(slMin),napMin?'小觉'+durTxt5(napMin):''));
+  if(poop)out.push(mk('diaper_poop',poop+'次',''));
+  if(vit)out.push(mk('vitamin',vit+'次',''));if(bath)out.push(mk('bath',bath+'次',''));
+  if(wt)out.push(mk('growth',wt+'kg',''));
   return '<div class="sumwrap">'+(out.length?out.map(function(s){return '<span class="sumit">'+s+'</span>'}).join(''):'<span class="sumit" style="color:var(--sub)">这一天还没有记录</span>')+'</div>';
 }
 function renderFresh(d){
@@ -338,7 +379,7 @@ function renderRec(){
   document.getElementById('dpick').value=ds;
   var isToday=(ds===todayStr());
   document.getElementById('todayBtn').style.display=isToday?'none':'block';
-  document.getElementById('sumbar').innerHTML=isToday?statusHTML(d.records||[]):daySummaryHTML(d.records||[],ds);
+  document.getElementById('sumbar').innerHTML=daySummaryHTML(d.records||[],ds);
   renderFresh(d);
   var now=Date.now();
   var nodes=buildNodes(d.records||[]).filter(function(n){return bjDateStr(n.t)===ds});
@@ -383,7 +424,7 @@ function sleepBlocks(rs){
 }
 function gridHTML(rs,opt){
   var days=weekDays();
-  var h='<div class="gridwrap"><div class="grid">';
+  var h='<div class="gridwrap"><div class="grid" style="height:'+gridH()+'px">';
   for(var hh=0;hh<=24;hh+=1){var pct=hh/24*100;
     h+='<div class="hline'+(hh%3===0?' h3':'')+'" style="top:'+pct+'%">'+(hh%3===0?'<span class="hlab">'+hh+'</span>':'')+'</div>'}
   var stack={},dots=[];
@@ -491,7 +532,7 @@ function renderSum(){
     if(sm==='time'){
       h+='<div style="position:relative">'+avgHtml+gridHTML(rs,{types:[],sleep:true,counts:function(ds){var t=dayTot(ds);return t?'<b>'+durTxt5(t)+'</b>':'—'}})+'</div>';
     }else{
-      var CH=440;
+      var CH=gridH();
       h+='<div class="gridwrap" style="position:relative;padding:6px 4px 4px 26px">'+avgHtml;
       h+='<div style="position:relative;height:'+CH+'px;display:flex">';
       for(var hh2=0;hh2<=24;hh2+=3){var bt=(hh2/24)*100;
@@ -554,12 +595,14 @@ function growHTML(){
     if(d.headCm)pts.hd.push([a,+d.headCm]);});
   var h='<div class="ctlrow"><div class="seg2"><button data-gm="wh" class="'+(g.mode==='wh'?'on':'')+'">身高 / 体重</button><button data-gm="hd" class="'+(g.mode==='hd'?'on':'')+'">头围</button></div>';
   h+='<div class="seg2"><button data-gr="12" class="'+(g.range===12?'on':'')+'">1年</button><button data-gr="24" class="'+(g.range===24?'on':'')+'">2年</button></div></div>';
-  h+='<div class="gridwrap" style="padding:8px 2px 2px">'+chartSVG(g.mode,g.range,pts)+'</div>';
+  var CH=Math.max(430, window.innerHeight - document.getElementById('hdr').offsetHeight - 225);
+  h+='<div class="gridwrap" style="padding:8px 2px 2px">'+chartSVG(g.mode,g.range,pts,Math.round(CH*360/374))+'</div>';
   h+='<div class="legend" style="text-wrap:pretty">The WHO Child Growth Standards (2006) · 女宝参考带（近似 ±2SD）</div>';
   return h;
 }
-function chartSVG(mode,R,pts){
-  var W=360,H=436,L=36,Rt=324,T=16,B=396;
+function chartSVG(mode,R,pts,H){
+  var W=360;H=H||436;
+  var L=36,Rt=324,T=16,B=H-40;
   function xs(m){return L+(m/R)*(Rt-L)}
   function mkYs(lo,hi){return function(v){return B-(v-lo)/(hi-lo)*(B-T)}}
   var s='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;display:block">';
@@ -622,7 +665,8 @@ function loadRec(){
   fetch(API_BASE+'?data=1&token='+encodeURIComponent(TOKEN)+'&date='+state.date)
   .then(function(r){return r.json()}).then(function(d){
     if(d.ok===false){showErr(d.msg||'加载失败');return}
-    document.getElementById('err').style.display='none';state.data=d;if(state.view==='rec')renderRec();
+    document.getElementById('err').style.display='none';state.data=d;
+    if(state.view==='rec')renderRec();else if(state.view==='stat')renderStat();
   }).catch(function(){showErr('网络不通，稍后自动重试')});
 }
 function loadSum(){
@@ -637,11 +681,16 @@ function toast(m){var t=document.getElementById('toast');t.textContent=m;t.style
 function switchView(vw){
   state.view=vw;
   document.querySelectorAll('#tabbar .tab').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-tab')===vw)});
+  document.getElementById('statview').style.display=(vw==='stat')?'block':'none';
   document.getElementById('tl').style.display=(vw==='rec')?'block':'none';
   document.getElementById('sumview').style.display=(vw==='sum')?'block':'none';
   document.getElementById('subtabs').style.display=(vw==='sum')?'flex':'none';
   document.getElementById('sumbar').style.display=(vw==='rec')?'block':'none';
   document.getElementById('dpick').style.pointerEvents=(vw==='rec')?'auto':'none';
+  var hideArrows=(vw==='stat');
+  document.getElementById('prevD').style.visibility=hideArrows?'hidden':'visible';
+  document.getElementById('nextD').style.visibility=hideArrows?'hidden':'visible';
+  if(vw==='stat'){state.date=todayStr();if(state.data)renderStat();loadRec()}
   if(vw==='rec'){if(state.data)renderRec();else loadRec()}
   if(vw==='sum'){if(!state.sum.from)state.sum.from=mondayOf(todayStr());if(state.sum.data)renderSum();else loadSum()}
   fixPad();
@@ -671,15 +720,15 @@ document.querySelectorAll('#subtabs .stab').forEach(function(b){
 });
 document.querySelectorAll('#tabbar .tab').forEach(function(b){
   b.onclick=function(){var t=b.getAttribute('data-tab');
-    if(t==='rec'||t==='sum'){switchView(t);return}
+    if(t==='rec'||t==='sum'||t==='stat'){switchView(t);return}
     toast('删除=点时间轴条目 · 同步说明见配方文档');
   };
 });
 document.addEventListener('click',function(e){var pop=document.getElementById('filtPop');if(pop&&pop.style.display==='block'&&!pop.contains(e.target)&&e.target.id!=='filtBtn')pop.style.display='none'});
 
 state.date=todayStr();
-loadRec();
-setInterval(function(){if(document.hidden)return;if(state.view==='rec'&&state.date===todayStr())loadRec();if(state.view==='sum')loadSum()},300000);
-document.addEventListener('visibilitychange',function(){if(!document.hidden){if(state.view==='rec')loadRec();else if(state.view==='sum')loadSum()}});
+switchView('stat');
+setInterval(function(){if(document.hidden)return;if(state.view==='stat')loadRec();if(state.view==='rec'&&state.date===todayStr())loadRec();if(state.view==='sum')loadSum()},300000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden){if(state.view==='rec'||state.view==='stat')loadRec();else if(state.view==='sum')loadSum()}});
 window.addEventListener('resize',fixPad);
 </script></body></html>
