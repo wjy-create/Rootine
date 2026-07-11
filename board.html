@@ -336,7 +336,7 @@ function renderStat(){
   fixPad();
 }
 function gridH(){return Math.max(400, window.innerHeight - document.getElementById('hdr').offsetHeight - 168)}
-function sleepH(){return Math.max(340, window.innerHeight - document.getElementById('hdr').offsetHeight - 262)}
+function sleepH(){return Math.max(340, window.innerHeight - document.getElementById('hdr').offsetHeight - 212)}
 function daySummaryHTML(rs,dateStr){
   var bN=0,bL=0,bR=0,bMin=0,fN=0,fMl=0,sN=0,sMl=0,slMin=0,napMin=0,poop=0,vit=0,bath=0,wt=null;
   rs.forEach(function(r){
@@ -446,7 +446,8 @@ function gridHTML(rs,opt){
     blocks.forEach(function(b){if(b.day===i)h+='<div class="blk" style="top:'+(b.top*100)+'%;height:'+(b.hgt*100)+'%;background:'+b.color+'"></div>'});
     dots.forEach(function(dt){
       if(dt.day!==i)return;var c=DOT[dt.type]||['#bbb',''];
-      var left=(28+dt.off*24);if(left>76)left=76;
+      var POS=[50,29,71,12,88];  // 第一枚居中，其余对称展开
+      var left=POS[Math.min(dt.off,POS.length-1)];
       if(c[1]==='star')h+='<div class="dot star" style="top:calc('+(dt.top*100)+'% - 5px);left:'+left+'%">★</div>';
       else h+='<div class="dot '+c[1]+'" style="top:calc('+(dt.top*100)+'% - 5px);left:'+left+'%;background:'+c[0]+'"></div>';
     });
@@ -612,10 +613,12 @@ function chartSVG(mode,R,pts,H){
   function xs(m){return L+(m/R)*(Rt-L)}
   function mkYs(lo,hi){return function(v){return B-(v-lo)/(hi-lo)*(B-T)}}
   var s='<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;display:block">';
-  // 竖向网格 + 月龄
+  // 竖向网格：逐月细线，1年逐月标签 / 2年隔月标签
   var step=(R===12)?1:2;
-  for(var m=0;m<=R;m+=step)s+='<line x1="'+xs(m)+'" y1="'+T+'" x2="'+xs(m)+'" y2="'+B+'" stroke="#f0ece6" stroke-width="1"/>'+
-    '<text x="'+xs(m)+'" y="'+(B+14)+'" font-size="9" fill="#9a938a" text-anchor="middle">'+m+'</text>';
+  for(var m=0;m<=R;m++){
+    s+='<line x1="'+xs(m)+'" y1="'+T+'" x2="'+xs(m)+'" y2="'+B+'" stroke="#f0ece6" stroke-width="1"'+(m%step?' stroke-dasharray="2 3"':'')+'/>';
+    if(m%step===0)s+='<text x="'+xs(m)+'" y="'+(B+14)+'" font-size="9" fill="#9a938a" text-anchor="middle">'+m+'</text>';
+  }
   // 横向网格（跟随左轴刻度）
   function hgrid(lo,hi,stepV){var out='';var ys=mkYs(lo,hi);
     for(var v=Math.ceil(lo);v<=hi;v+=stepV)out+='<line x1="'+L+'" y1="'+ys(v)+'" x2="'+Rt+'" y2="'+ys(v)+'" stroke="#eee7e0" stroke-width="1" stroke-dasharray="3 3"/>';
@@ -643,17 +646,25 @@ function chartSVG(mode,R,pts,H){
     return out;
   }
   if(mode==='wh'){
-    // Piyo 式双轴刻度校准：左轴体重 1–13kg，右轴身高 30–80cm（2年 1–15 / 30–90），两条曲线分层不重叠
-    var wLo=1,wHi=(R===12?13:15),hLo=30,hHi=(R===12?80:90);
-    var ysW=mkYs(wLo,wHi),ysH=mkYs(hLo,hHi);
-    s+=hgrid(wLo,wHi,1);
-    s+=band(WHO.ht,hLo,hHi,ysH,'rgba(120,165,220,.22)');
-    s+=band(WHO.wt,wLo,wHi,ysW,'rgba(140,190,120,.26)');
+    // 严格照抄 Piyo 双轴：1年 kg1–12(步1)/cm30–80(步5)，4kg↔30cm、12kg↔80cm；
+    // 2年 kg2–20(步2)/cm40–100(步5)，4kg↔40cm、20kg↔100cm；顶部留两行空行放单位
+    var kLo,kHead,labs=[],cmB,cmSlope,cLo,cHi,kStep;
+    if(R===12){kLo=1;kHead=2;kStep=1;cmB=30;cmSlope=6.25;cLo=30;cHi=80;for(var k=1;k<=12;k++)labs.push(k)}
+    else{kLo=1;kHead=2;kStep=2;cmB=40;cmSlope=3.75;cLo=40;cHi=100;for(var k2=2;k2<=20;k2+=2)labs.push(k2)}
+    var kTop=labs[labs.length-1]+kHead;
+    var ysW=mkYs(kLo,kTop);
+    var ysH=function(cm){return ysW(4+(cm-cmB)/cmSlope)};
+    // 横向网格：每个 kg 刻度一条
+    labs.forEach(function(v){s+='<line x1="'+L+'" y1="'+ysW(v)+'" x2="'+Rt+'" y2="'+ysW(v)+'" stroke="#eee7e0" stroke-width="1" stroke-dasharray="3 3"/>'});
+    s+=band(WHO.ht,0,0,ysH,'rgba(120,165,220,.22)');
+    s+=band(WHO.wt,0,0,ysW,'rgba(140,190,120,.26)');
     s+=series(pts.ht,ysH,'#4a84c6');
     s+=series(pts.wt,ysW,'#5c9a4a');
-    s+=yAxis(wLo,wHi,1,L-4,'end','#5c9a4a')+'<text x="'+(L-4)+'" y="'+(T-2)+'" font-size="9" fill="#5c9a4a" text-anchor="end">(kg)</text>';
-    s+=yAxis(hLo,hHi,5,Rt+4,'start','#4a84c6')+'<text x="'+(Rt+4)+'" y="'+(T-2)+'" font-size="9" fill="#4a84c6">(cm)</text>';
-    s+='<text x="'+(L+16)+'" y="'+(T+18)+'" font-size="13" fill="#4a84c6" font-weight="600">身高</text>';
+    labs.forEach(function(v){s+='<text x="'+(L-4)+'" y="'+(ysW(v)+3)+'" font-size="9" fill="#5c9a4a" text-anchor="end">'+v+'</text>'});
+    s+='<text x="'+(L-4)+'" y="'+(ysW(kTop-0.6)+3)+'" font-size="9" fill="#5c9a4a" text-anchor="end">(kg)</text>';
+    for(var c2=cLo;c2<=cHi;c2+=5)s+='<text x="'+(Rt+4)+'" y="'+(ysH(c2)+3)+'" font-size="9" fill="#4a84c6">'+c2+'</text>';
+    s+='<text x="'+(Rt+4)+'" y="'+(ysH(cHi)-14)+'" font-size="9" fill="#4a84c6">(cm)</text>';
+    s+='<text x="'+(L+16)+'" y="'+(T+20)+'" font-size="13" fill="#4a84c6" font-weight="600">身高</text>';
     s+='<text x="'+(Rt-46)+'" y="'+(B-16)+'" font-size="13" fill="#5c9a4a" font-weight="600">体重</text>';
   }else{
     var dLo=30,dHi=WHO.hd.hi[R]+1,ysD=mkYs(dLo,dHi);
