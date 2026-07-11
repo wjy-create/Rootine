@@ -47,10 +47,10 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .row{display:flex;align-items:flex-start;gap:9px;padding:9px 12px;border-bottom:1px solid var(--line)}
 .row:last-child{border-bottom:none}
 .row .t{font-variant-numeric:tabular-nums;font-size:15px;color:#6f6a63;white-space:nowrap;width:46px;flex:none;padding-top:6px;text-align:right}
-.pic{width:30px;height:30px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;margin-top:1px}
-.pic svg{width:19px;height:19px;display:block}
+.pic{width:32px;height:32px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.pic svg{width:20px;height:20px;display:block}
 .pic.img{background:none!important;border-radius:0}
-.pic.img img{width:30px;height:30px;object-fit:contain;display:block}
+.pic.img img{width:32px;height:32px;object-fit:contain;display:block}
 .pic.sq{border-radius:8px}
 .pic.dia{border-radius:7px;transform:rotate(45deg)}
 .pic.dia svg{transform:rotate(-45deg)}
@@ -83,16 +83,16 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .avgfloat span{background:rgba(255,255,255,.95);border-radius:8px;padding:3px 9px;font-size:11.5px;white-space:nowrap}
 .avgfloat .an{border:1.5px solid var(--night);color:#4a5f9e}
 .avgfloat .ap{border:1.5px solid var(--nap);color:#a8632c}
-.sbar{position:absolute;bottom:0;left:13%;width:74%;display:flex;flex-direction:column;border-radius:7px 7px 0 0;overflow:hidden}
-.sbn{background:var(--night)}
-.sbp{background:var(--nap);display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;text-align:center;line-height:1.3;text-shadow:0 0 2px rgba(0,0,0,.2)}
+.sbar{position:absolute;bottom:0;left:8%;width:68%}
+.sblue{position:absolute;inset:0;background:var(--night);border-radius:8px 8px 0 0}
+.sorange{position:absolute;bottom:0;left:16%;width:100%;background:var(--nap);border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:#fff;text-align:center;line-height:1.45;text-shadow:0 0 2px rgba(0,0,0,.2)}
 .gridwrap{position:relative;background:#fff;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:6px 4px 4px 26px;overflow:hidden}
 .grid{position:relative;display:flex}
-.hline{position:absolute;left:0;right:0;border-top:1px dashed #eee;pointer-events:none}
-.hline.h3{border-top:1px solid #e3ddd6}
+.stripe{position:absolute;top:0;bottom:0;background:#fdf3f7;z-index:0;pointer-events:none}
+.hline{position:absolute;left:0;right:0;border-top:1px dashed #e8e2db;pointer-events:none;z-index:1}
+.hline.h3{border-top:1px solid #ddd5cc}
 .hlab{position:absolute;left:-22px;top:-7px;font-size:10px;color:var(--sub);width:18px;text-align:right}
-.col{flex:1;position:relative;border-left:1px solid #f5f0ec}
-.col.alt{background:#fdf5f8}
+.col{flex:1;position:relative;border-left:1px solid rgba(0,0,0,.04);z-index:2}
 .blk{position:absolute;left:8%;width:84%;border-radius:6px;opacity:.5}
 .dot{position:absolute;width:11px;height:11px;border-radius:50%;border:1.5px solid rgba(255,255,255,.9);box-shadow:0 0 0 .5px rgba(0,0,0,.12);margin-left:-5px}
 .dot.sq{border-radius:2.5px}
@@ -207,7 +207,7 @@ function badge(pt){
  var c=BC[pt]||['#b8b0a5',''];
  return '<span class="pic '+c[1]+'" style="background:'+c[0]+'"><svg viewBox="0 0 24 24">'+glyph(pt,c[0])+'</svg></span>'}
 // 摘要圆点色（与徽章同色系）
-var DOT={feed_breast:['#f27ba3',''],feed_formula:['#f5a623',''],feed_solid:['#7fbf6c',''],feed_bottle:['#d4b23c',''],water:['#54b8e0',''],drink:['#54b8e0',''],snack:['#b07f5c',''],diaper_poop:['#e0913c','sq'],diaper_pee:['#3fb8af','sq'],vitamin:['#f2b41c','star'],bath:['#57c7d4','dia'],walk:['#57a85c','dia'],temp:['#e05c5c',''],growth:['#6da84f','sq'],vaccine:['#8b78c9','sq'],hospital:['#8b78c9','sq'],swim:['#3f9fd8',''],note:['#bdbdbd','']};
+var DOT={feed_breast:['#f27ba3',''],feed_formula:['#f5a623',''],feed_solid:['#8cc63e',''],feed_bottle:['#d4b23c',''],water:['#54b8e0',''],drink:['#54b8e0',''],snack:['#b07f5c',''],diaper_poop:['#e0913c','sq'],diaper_pee:['#3fb8af','sq'],vitamin:['#f2b41c','star'],bath:['#57c7d4','dia'],walk:['#57a85c','dia'],temp:['#e05c5c',''],growth:['#6da84f','sq'],vaccine:['#8b78c9','sq'],hospital:['#8b78c9','sq'],swim:['#3f9fd8',''],note:['#bdbdbd','']};
 
 function pad(n){return (n<10?'0':'')+n}
 function bj(ts){return new Date(new Date(ts).getTime()+8*3600e3)}
@@ -425,6 +425,7 @@ function sleepBlocks(rs){
 function gridHTML(rs,opt){
   var days=weekDays();
   var h='<div class="gridwrap"><div class="grid" style="height:'+gridH()+'px">';
+  for(var si=1;si<7;si+=2)h+='<div class="stripe" style="left:'+(si*100/7)+'%;width:'+(100/7)+'%"></div>';
   for(var hh=0;hh<=24;hh+=1){var pct=hh/24*100;
     h+='<div class="hline'+(hh%3===0?' h3':'')+'" style="top:'+pct+'%">'+(hh%3===0?'<span class="hlab">'+hh+'</span>':'')+'</div>'}
   var stack={},dots=[];
@@ -440,7 +441,7 @@ function gridHTML(rs,opt){
   });
   var blocks=(opt.sleep&&state.sum.showSleep)?sleepBlocks(rs):[];
   for(var i=0;i<7;i++){
-    h+='<div class="col'+(i%2?' alt':'')+'">';
+    h+='<div class="col">';
     blocks.forEach(function(b){if(b.day===i)h+='<div class="blk" style="top:'+(b.top*100)+'%;height:'+(b.hgt*100)+'%;background:'+b.color+'"></div>'});
     dots.forEach(function(dt){
       if(dt.day!==i)return;var c=DOT[dt.type]||['#bbb',''];
@@ -480,7 +481,7 @@ function renderSum(){
     if(state.sum.feedMode==='time'){
       h+=gridHTML(rs,{types:FEEDT,sleep:false,counts:function(ds){
         var b=0,f=0,s=0;rs.forEach(function(r){if(!inDay(r,ds))return;if(r.type==='feed_breast')b++;if(r.type==='feed_formula')f++;if(r.type==='feed_solid')s++});
-        var o=[];if(b)o.push('<span style="color:#f27ba3">●</span><b>'+b+'次</b>');if(f)o.push('<span style="color:#f5a623">●</span><b>'+f+'次</b>');if(s)o.push('<span style="color:#7fbf6c">●</span><b>'+s+'次</b>');
+        var o=[];if(b)o.push('<span style="color:#f27ba3">●</span><b>'+b+'次</b>');if(f)o.push('<span style="color:#f5a623">●</span><b>'+f+'次</b>');if(s)o.push('<span style="color:#8cc63e">●</span><b>'+s+'次</b>');
         return o.join('<br>')||'—'}});
     }else{
       var rows=[['feed_breast',function(ds){var n=0,L=0,R=0,M=0;rs.forEach(function(r){if(!inDay(r,ds)||r.type!=='feed_breast')return;var d=r.data||{};n++;L+=(+d.leftMin||0);R+=(+d.rightMin||0);M+=(+d.min||0)});return n?(n+'次<br>左<b>'+(L+M)+'</b>分<br>右<b>'+R+'</b>分'):'0次'}],
@@ -489,23 +490,24 @@ function renderSum(){
       h+='<div class="qtable">';
       rows.forEach(function(row){h+='<div class="qrow"><span class="qic">'+badge(row[0])+'</span>';days.forEach(function(ds){h+='<div class="qcell">'+row[1](ds)+'</div>'});h+='</div>'});
       h+='</div>';
-      var COLOR={feed_formula:'#f5a623',feed_solid:'#7fbf6c',water:'#54b8e0',drink:'#54b8e0'};
+      var COLOR={feed_formula:'#f5a623',feed_solid:'#8cc63e',water:'#54b8e0',drink:'#54b8e0'};
       var daySegs=days.map(function(ds){
         var segs=[];rs.forEach(function(r){if(!inDay(r,ds))return;var ml=+((r.data||{}).ml)||0;if(!ml)return;
           if(COLOR[r.type])segs.push({ml:ml,c:COLOR[r.type],t:new Date(r.start_at).getTime()})});
         segs.sort(function(a,b){return a.t-b.t});
         return segs});
       var maxT=1;daySegs.forEach(function(s){var t=s.reduce(function(a,x){return a+x.ml},0);if(t>maxT)maxT=t});
-      h+='<div class="bars">';
+      var BH=Math.max(240, window.innerHeight - document.getElementById('hdr').offsetHeight - 430);
+      h+='<div class="bars" style="padding-left:4px;min-height:'+(BH+40)+'px"><div style="width:30px;flex:none"></div>';
       daySegs.forEach(function(segs){
         var tot=segs.reduce(function(a,x){return a+x.ml},0);
         h+='<div class="barcol">'+(tot?'<div class="bartot">'+tot+'ml</div>':'')+'<div class="bar">';
-        segs.forEach(function(s){var px=Math.max(4,Math.round(s.ml/maxT*230));
+        segs.forEach(function(s){var px=Math.max(4,Math.round(s.ml/maxT*BH));
           h+='<div class="bseg" style="height:'+px+'px;background:'+s.c+'">'+(px>=16?s.ml+'ml':'')+'</div>'});
         h+='</div></div>';
       });
-      h+='</div><div class="legend"><span class="lg"><i style="background:#f5a623"></i>配方奶</span><span class="lg"><i style="background:#7fbf6c"></i>辅食</span><span class="lg"><i style="background:#54b8e0"></i>水/饮料</span></div>';
-      h+='<div class="daylabs" style="padding-left:4px">'+days.map(function(ds){var dow=new Date(ymdUtc(ds)).getUTCDay();return '<div class="daylab'+(dow===6?' sat':'')+(dow===0?' sun':'')+'">'+mdLabel(ds)+'</div>'}).join('')+'</div>';
+      h+='</div><div class="daylabs" style="padding-left:34px">'+days.map(function(ds){var dow=new Date(ymdUtc(ds)).getUTCDay();return '<div class="daylab'+(dow===6?' sat':'')+(dow===0?' sun':'')+'">'+mdLabel(ds)+'</div>'}).join('')+'</div>';
+      h+='<div class="legend"><span class="lg"><i style="background:#f5a623"></i>配方奶</span><span class="lg"><i style="background:#8cc63e"></i>辅食</span><span class="lg"><i style="background:#54b8e0"></i>水/饮料</span></div>';
     }
   }
   if(sub==='grow'){
@@ -532,28 +534,28 @@ function renderSum(){
     if(sm==='time'){
       h+='<div style="position:relative">'+avgHtml+gridHTML(rs,{types:[],sleep:true,counts:function(ds){var t=dayTot(ds);return t?'<b>'+durTxt5(t)+'</b>':'—'}})+'</div>';
     }else{
-      var CH=gridH();
+      var CH=Math.max(340, window.innerHeight - document.getElementById('hdr').offsetHeight - 255);
       h+='<div class="gridwrap" style="position:relative;padding:6px 4px 4px 26px">'+avgHtml;
       h+='<div style="position:relative;height:'+CH+'px;display:flex">';
+      for(var si2=1;si2<7;si2+=2)h+='<div class="stripe" style="left:'+(si2*100/7)+'%;width:'+(100/7)+'%"></div>';
       for(var hh2=0;hh2<=24;hh2+=3){var bt=(hh2/24)*100;
         h+='<div class="hline h3" style="bottom:'+bt+'%;top:auto"><span class="hlab" style="top:-6px">'+hh2+'</span></div>'}
       days.forEach(function(ds,i){
         var tot=dayTot(ds),np=0;
         rs.forEach(function(r){if(r.type==='sleep'&&isNapRec(r))np+=sleepOverlapMin(r,ds)});
-        var night=Math.max(0,tot-np);
         var totPx=tot/1440*CH,napPx=np/1440*CH;
-        h+='<div class="col'+(i%2?' alt':'')+'" style="position:relative">';
-        if(tot>0){h+='<div class="sbar" style="height:'+totPx+'px">';
-          h+='<div class="sbn" style="height:'+(totPx-napPx)+'px"></div>';
-          if(napPx>0)h+='<div class="sbp" style="height:'+napPx+'px">'+(napPx>=32?durTxt5(np).replace('小时','小时<br>'):'')+'</div>';
+        h+='<div class="col" style="position:relative">';
+        if(tot>0){h+='<div class="sbar" style="height:'+totPx+'px"><div class="sblue"></div>';
+          if(napPx>0){var npm=Math.round(np),nh=Math.floor(npm/60),nm2=Math.floor(npm%60/5)*5;
+            h+='<div class="sorange" style="height:'+napPx+'px">'+(napPx>=34?('<span>'+nh+'小时</span><span>'+nm2+'分钟</span>'):'')+'</div>'}
           h+='</div>'}
         h+='</div>';
       });
       h+='</div></div><div class="daylabs">';
-      days.forEach(function(ds){var dow=new Date(ymdUtc(ds)).getUTCDay();var t=dayTot(ds);
-        h+='<div class="daylab'+(dow===6?' sat':'')+(dow===0?' sun':'')+'">'+mdLabel(ds)+'<div class="cnt">'+(t?'<b>'+durTxt5(t)+'</b>':'—')+'</div></div>'});
+      days.forEach(function(ds){var dow=new Date(ymdUtc(ds)).getUTCDay();var t=Math.round(dayTot(ds));
+        var th=Math.floor(t/60),tm=Math.floor(t%60/5)*5;
+        h+='<div class="daylab'+(dow===6?' sat':'')+(dow===0?' sun':'')+'">'+mdLabel(ds)+'<div class="cnt">'+(t?('<b>'+th+'小时</b><br><b>'+tm+'分钟</b>'):'—')+'</div></div>'});
       h+='</div>';
-      h+='<div class="legend"><span class="lg"><i style="background:var(--night)"></i>夜觉</span><span class="lg"><i style="background:var(--nap)"></i>小觉</span><span style="font-size:10px">均值截至昨天 · 自然日0点切分</span></div>';
     }
   }
   v.innerHTML=h;
@@ -637,7 +639,8 @@ function chartSVG(mode,R,pts,H){
     return out;
   }
   if(mode==='wh'){
-    var wLo=2,wHi=WHO.wt.hi[R]+1,hLo=44,hHi=WHO.ht.hi[R]+2;
+    // Piyo 式双轴刻度校准：左轴体重 1–13kg，右轴身高 30–80cm（2年 1–15 / 30–90），两条曲线分层不重叠
+    var wLo=1,wHi=(R===12?13:15),hLo=30,hHi=(R===12?80:90);
     var ysW=mkYs(wLo,wHi),ysH=mkYs(hLo,hHi);
     s+=hgrid(wLo,wHi,1);
     s+=band(WHO.ht,hLo,hHi,ysH,'rgba(120,165,220,.22)');
@@ -726,6 +729,24 @@ document.querySelectorAll('#tabbar .tab').forEach(function(b){
 });
 document.addEventListener('click',function(e){var pop=document.getElementById('filtPop');if(pop&&pop.style.display==='block'&&!pop.contains(e.target)&&e.target.id!=='filtBtn')pop.style.display='none'});
 
+// ── 横滑手势：记录页切天，摘要页切周 ──
+(function(){
+  var sx=0,sy=0,st=0;
+  var main=document.getElementById('main');
+  main.addEventListener('touchstart',function(e){
+    if(e.touches.length!==1)return;
+    sx=e.touches[0].clientX;sy=e.touches[0].clientY;st=Date.now();
+  },{passive:true});
+  main.addEventListener('touchend',function(e){
+    if(!st||Date.now()-st>600){st=0;return}
+    var t=e.changedTouches[0];
+    var dx=t.clientX-sx,dy=t.clientY-sy;st=0;
+    if(Math.abs(dx)<64||Math.abs(dx)<Math.abs(dy)*1.6)return; // 太短或偏竖向=滚动
+    var dir=dx<0?1:-1; // 左滑=下一天/周
+    if(state.view==='rec'){state.date=shiftDate(state.date,dir);loadRec()}
+    else if(state.view==='sum'&&state.sum.sub!=='grow'){state.sum.from=shiftDate(state.sum.from,dir*7);loadSum()}
+  },{passive:true});
+})();
 state.date=todayStr();
 switchView('stat');
 setInterval(function(){if(document.hidden)return;if(state.view==='stat')loadRec();if(state.view==='rec'&&state.date===todayStr())loadRec();if(state.view==='sum')loadSum()},300000);
