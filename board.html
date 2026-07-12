@@ -121,7 +121,13 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 #tabbar{position:fixed;bottom:0;left:0;right:0;z-index:10;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
 .tab{flex:1;border:none;background:none;padding:13px 0 11px;font-size:14px;color:var(--sub);letter-spacing:1px}
 .tab.on{color:var(--pink);font-weight:700}
-#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(58,53,50,.92);color:#fff;font-size:13px;padding:8px 16px;border-radius:99px;display:none;z-index:20;white-space:nowrap}
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:rgba(58,53,50,.92);color:#fff;font-size:13px;padding:8px 16px;border-radius:99px;display:none;z-index:40;white-space:nowrap}
+#sheetbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:30}
+#sheet{display:none;position:fixed;left:10px;right:10px;bottom:calc(12px + env(safe-area-inset-bottom));background:#fff;border-radius:16px;z-index:31;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.shhead{padding:12px 16px;font-size:12.5px;color:var(--sub);border-bottom:1px solid var(--line);text-wrap:pretty}
+.shbtn{display:block;width:100%;padding:15px;border:none;background:none;font-size:16px;color:var(--ink);border-bottom:1px solid var(--line)}
+.shbtn:last-child{border-bottom:none}
+.shbtn.danger{color:#e05c5c}
 </style></head><body>
 
 <div id="hdr">
@@ -157,6 +163,7 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
   <button class="tab" data-tab="menu">菜单</button>
 </div>
 <div id="toast"></div>
+<div id="sheetbg"></div><div id="sheet"></div>
 
 <script>
 var TOKEN=new URLSearchParams(location.search).get('token')||'';
@@ -316,11 +323,14 @@ function statCards(rs){
       cv=fmtT(wk)+' 起床<br>已醒 <b>'+durTxt5((now-wk)/60000)+'</b>';
       cs='上一觉 '+durTxt(sd.durationMin)+' · '+cs}}
   h+='<div class="card"><div class="ck">'+badge(slIcon)+'睡</div><div class="cv">'+cv+'</div><div class="cs">'+cs+'</div></div>';
-  // 换
-  var pp=pick(['diaper_poop']);cv='今天还没有便便';
-  if(pp){var day=bjDateStr(pp._t)===today?'':'昨天 ';
-    cv='上次便便 '+day+fmtT(pp._t)+'<br>距现在 <b>'+ago5(pp._t)+'</b>'}
-  h+='<div class="card"><div class="ck">'+badge('diaper_poop')+'换</div><div class="cv">'+cv+'</div><div class="cs">今日便便 '+nPoop+' 次</div></div>';
+  // 换（上次便便跨任意天数：优先窗口内记录，否则用服务端 lastPoopAt）
+  var pp=pick(['diaper_poop']);
+  var ppT=pp?pp._t:(state.data&&state.data.lastPoopAt?new Date(state.data.lastPoopAt).getTime():null);
+  cv='还没有便便记录';
+  if(ppT){var pd=bjDateStr(ppT);
+    var day=pd===today?'今天 ':(pd===shiftDate(today,-1)?'昨天 ':(+pd.split('-')[1])+'月'+(+pd.split('-')[2])+'日 ');
+    cv='上次便便 '+day+fmtT(ppT)+'<br>距现在 <b>'+ago5(ppT)+'</b>'}
+  h+='<div class="card"><div class="ck">'+badge('diaper_poop')+'换</div><div class="cv">'+cv+'</div><div class="cs">今日便便 '+nPoop+' 次'+(ppT?' · 上次 '+ago5(ppT)+'前':'')+'</div></div>';
   return h;
 }
 function renderStat(){
@@ -400,6 +410,7 @@ function renderRec(){
     out+='</div>'+(w.n?'<span class="by '+w.c+'">'+esc(w.n)+'</span>':'')+'</div>';
   });
   document.getElementById('tl').innerHTML=out;
+  slideIn(document.getElementById('tl'));
   fixPad();
 }
 
@@ -511,6 +522,21 @@ function renderSum(){
       h+='</div><div class="daylabs" style="padding-left:34px">'+days.map(function(ds){var dow=new Date(ymdUtc(ds)).getUTCDay();return '<div class="daylab'+(dow===6?' sat':'')+(dow===0?' sun':'')+'">'+mdLabel(ds)+'</div>'}).join('')+'</div>';
       h+='<div class="legend"><span class="lg"><i style="background:#f5a623"></i>配方奶</span><span class="lg"><i style="background:#8cc63e"></i>辅食</span><span class="lg"><i style="background:#54b8e0"></i>水/饮料</span></div>';
     }
+    // 周均值（截至昨天），方便逐周对比
+    var ystF=shiftDate(todayStr(),-1),fA=[],sA=[],bA=[];
+    days.forEach(function(ds){
+      if(ymdUtc(ds)>ymdUtc(ystF))return;
+      var f=0,s2=0,bm=0,any=false;
+      rs.forEach(function(r){if(!inDay(r,ds))return;var d=r.data||{};
+        if(r.type==='feed_formula'){f+=(+d.ml||0);any=true}
+        if(r.type==='feed_solid'){s2+=(+d.ml||0);any=true}
+        if(r.type==='feed_breast'){bm+=(+d.leftMin||0)+(+d.rightMin||0)+(+d.min||0);any=true}});
+      if(any){fA.push(f);sA.push(s2);bA.push(bm)}
+    });
+    if(fA.length){
+      var av=function(a){return Math.round(a.reduce(function(x,y){return x+y},0)/a.length)};
+      h+='<div class="legend" style="padding-top:10px">周均/天（截至昨天）：<span style="color:#f5a623;font-weight:600">奶 '+av(fA)+'ml</span>　<span style="color:#8cc63e;font-weight:600">辅食 '+av(sA)+'ml</span>　<span style="color:#f27ba3;font-weight:600">母乳 '+av(bA)+'分钟</span></div>';
+    }
   }
   if(sub==='grow'){
     if(!state.growth.data){h+='<div class="empty">加载成长数据…</div>';loadGrowth()}
@@ -564,6 +590,7 @@ function renderSum(){
     }
   }
   v.innerHTML=h;
+  slideIn(v);
   var mb=document.getElementById('moonBtn');
   if(mb)mb.onclick=function(){state.sum.showSleep=!state.sum.showSleep;renderSum()};
   var fb=document.getElementById('filtBtn');
@@ -696,6 +723,71 @@ function loadSum(){
 }
 function showErr(m){var e=document.getElementById('err');e.style.display='block';e.textContent=m}
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(function(){t.style.display='none'},1800)}
+/* ── 切换过渡动画 ── */
+var slideDir=0;
+function slideOut(){
+  var el=document.getElementById(state.view==='sum'?'sumview':'tl');
+  el.style.transition='transform .15s ease,opacity .15s';
+  el.style.transform='translateX('+(slideDir>0?-64:64)+'px)';el.style.opacity='.2';
+}
+function slideIn(el){
+  if(!slideDir){el.style.transition='none';el.style.transform='';el.style.opacity='1';return}
+  el.style.transition='none';
+  el.style.transform='translateX('+(slideDir>0?64:-64)+'px)';el.style.opacity='.2';
+  requestAnimationFrame(function(){requestAnimationFrame(function(){
+    el.style.transition='transform .18s ease,opacity .18s';
+    el.style.transform='';el.style.opacity='1';slideDir=0;
+  })});
+}
+function navRec(dir){slideDir=dir;slideOut();state.date=shiftDate(state.date,dir);loadRec()}
+function navSum(dir){slideDir=dir;slideOut();state.sum.from=shiftDate(state.sum.from,dir*7);loadSum()}
+/* ── 点按修改/删除 ── */
+function post(bodyObj,cb){
+  bodyObj.token=TOKEN;
+  fetch(API_BASE,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(bodyObj)})
+  .then(function(r){return r.json()}).then(function(d){if(d.ok){cb&&cb()}else{toast(d.msg||'操作失败')}})
+  .catch(function(){toast('网络不通')});
+}
+function afterEdit(){toast('已修改');closeSheet();loadRec();state.sum.data=null}
+function closeSheet(){document.getElementById('sheet').style.display='none';document.getElementById('sheetbg').style.display='none'}
+function editTime(rec){
+  var st=new Date(rec.start_at).getTime();
+  var v=prompt('修改时间（HH:MM）',fmtT(st));if(!v)return;
+  var mm=v.match(/^(\d{1,2}):(\d{2})$/);if(!mm){toast('格式要像 08:20');return}
+  var ds=bjDateStr(st);var p=ds.split('-');
+  var utc=Date.UTC(+p[0],+p[1]-1,+p[2],+mm[1],+mm[2])-8*3600e3;
+  post({action:'update',id:rec.id,start_at:new Date(utc).toISOString()},afterEdit);
+}
+function editDetail(rec){
+  var d=rec.data||{},t=rec.type,patch=null;
+  function num(msg,cur){var v=prompt(msg,cur==null?'':cur);if(v===null)return null;var n=parseFloat(v);return isNaN(n)?null:n}
+  if(t==='feed_formula'||t==='water'||t==='drink'){var ml=num('毫升数',d.ml);if(ml===null)return;patch={ml:ml}}
+  else if(t==='feed_breast'){var L=num('左边分钟',d.leftMin||d.min||0);if(L===null)return;var R=num('右边分钟',d.rightMin||0);if(R===null)return;patch={leftMin:L,rightMin:R,min:0}}
+  else if(t==='feed_solid'){var fo=prompt('吃了什么',d.food||'');if(fo===null)return;var sml=num('毫升数（没有填0）',d.ml||0);if(sml===null)return;patch={food:fo,ml:sml}}
+  else if(t==='sleep'){var du=num('睡眠时长（分钟）',d.durationMin||'');if(du===null)return;patch={durationMin:du,open:false}}
+  else if(t==='walk'){var dw=num('散步时长（分钟）',d.durationMin||'');if(dw===null)return;patch={durationMin:dw,open:false}}
+  else if(t==='temp'){var tc=num('体温（°C）',d.tempC);if(tc===null)return;patch={tempC:tc}}
+  else if(t==='growth'){var wk=num('体重（kg，不改按取消）',d.weightKg);if(wk!==null){patch={weightKg:wk}}else{return}}
+  else{var nt=prompt('备注内容',rec.note||'');if(nt===null)return;post({action:'update',id:rec.id,note:nt},afterEdit);return}
+  post({action:'update',id:rec.id,dataPatch:patch},afterEdit);
+}
+function openSheet(rec,label){
+  var sh=document.getElementById('sheet');
+  sh.innerHTML='<div class="shhead">'+esc(label)+(rec.note?'<br>“'+esc(rec.note)+'”':'')+'</div>'+
+    '<button class="shbtn" id="shTime">修改时间</button>'+
+    '<button class="shbtn" id="shDetail">修改内容</button>'+
+    '<button class="shbtn danger" id="shDel">删除这条记录</button>'+
+    '<button class="shbtn" id="shCancel">取消</button>';
+  sh.style.display='block';document.getElementById('sheetbg').style.display='block';
+  document.getElementById('shTime').onclick=function(){editTime(rec)};
+  document.getElementById('shDetail').onclick=function(){editDetail(rec)};
+  document.getElementById('shDel').onclick=function(){
+    if(!confirm('确定删除？\n'+label))return;
+    post({action:'delete',id:rec.id},function(){toast('已删除');closeSheet();loadRec();state.sum.data=null});
+  };
+  document.getElementById('shCancel').onclick=closeSheet;
+  document.getElementById('sheetbg').onclick=closeSheet;
+}
 function switchView(vw){
   state.view=vw;
   document.querySelectorAll('#tabbar .tab').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-tab')===vw)});
@@ -714,11 +806,9 @@ function switchView(vw){
   fixPad();
 }
 document.getElementById('prevD').onclick=function(){
-  if(state.view==='sum'){state.sum.from=shiftDate(state.sum.from,-7);loadSum()}
-  else{state.date=shiftDate(state.date,-1);loadRec()}};
+  if(state.view==='sum')navSum(-1);else if(state.view==='rec')navRec(-1)};
 document.getElementById('nextD').onclick=function(){
-  if(state.view==='sum'){state.sum.from=shiftDate(state.sum.from,7);loadSum()}
-  else{state.date=shiftDate(state.date,1);loadRec()}};
+  if(state.view==='sum')navSum(1);else if(state.view==='rec')navRec(1)};
 document.getElementById('todayBtn').onclick=function(){
   if(state.view==='sum'){state.sum.from=mondayOf(todayStr());loadSum()}
   else{state.date=todayStr();loadRec()}};
@@ -726,10 +816,9 @@ document.getElementById('dpick').onchange=function(){if(this.value){state.date=t
 document.getElementById('tl').addEventListener('click',function(e){
   var row=e.target.closest?e.target.closest('.row'):null;if(!row)return;
   var id=row.getAttribute('data-id');if(!id)return;
-  if(!confirm('删除这条记录？\n'+row.getAttribute('data-label')))return;
-  fetch(API_BASE,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:TOKEN,action:'delete',id:id})})
-  .then(function(r){return r.json()}).then(function(d){if(d.ok){toast('已删除');loadRec();state.sum.data=null}else{toast(d.msg||'删除失败')}})
-  .catch(function(){toast('网络不通')});
+  var rec=null;(state.data&&state.data.records||[]).forEach(function(r){if(r.id===id)rec=r});
+  if(!rec)return;
+  openSheet(rec,row.getAttribute('data-label'));
 });
 document.querySelectorAll('#subtabs .stab').forEach(function(b){
   b.onclick=function(){state.sum.sub=b.getAttribute('data-st');
@@ -758,8 +847,8 @@ document.addEventListener('click',function(e){var pop=document.getElementById('f
     var dx=t.clientX-sx,dy=t.clientY-sy;st=0;
     if(Math.abs(dx)<64||Math.abs(dx)<Math.abs(dy)*1.6)return; // 太短或偏竖向=滚动
     var dir=dx<0?1:-1; // 左滑=下一天/周
-    if(state.view==='rec'){state.date=shiftDate(state.date,dir);loadRec()}
-    else if(state.view==='sum'&&state.sum.sub!=='grow'){state.sum.from=shiftDate(state.sum.from,dir*7);loadSum()}
+    if(state.view==='rec')navRec(dir);
+    else if(state.view==='sum'&&state.sum.sub!=='grow')navSum(dir);
   },{passive:true});
 })();
 state.date=todayStr();
