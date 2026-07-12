@@ -304,11 +304,20 @@ function buildNodes(rs){
       nodes.push({t:st,pt:'feed_formula',name:'配方奶',pink:formulaPink(d),quote:quote,rec:r,kind:'milk',delLabel:'配方奶 '+fmtT(st)});
     }else if(r.type==='feed_solid'){
       nodes.push({t:st,pt:'feed_solid',name:'辅食',pink:d.ml?d.ml+'ml':'',sub:d.food||'',quote:quote,rec:r,delLabel:'辅食 '+fmtT(st)});
+    }else if(r.type==='vitamin'){
+      var vn=d.note||d.name||'维生素';
+      var vpt=/AD/i.test(vn)?'vitamin_ad':(/益生菌/.test(vn)?'probiotic':'vitamin');
+      nodes.push({t:st,pt:vpt,name:vn,quote:quote,rec:r,delLabel:vn+' '+fmtT(st)});
+    }else if(r.type==='achievement'||r.type==='bigmotor'||r.type==='track'){
+      var mtitle=d.title||d.note||r.note||'';
+      nodes.push({t:st,pt:r.type,name:r.type==='achievement'?'成就':(LABEL[r.type]||r.type),pink:mtitle,rec:r,delLabel:'成就 '+fmtT(st)+(mtitle?'（'+mtitle.slice(0,12)+'…）':'')});
     }else{
       var pink='',sub='';
       if(r.type==='temp')pink=(d.tempC||'?')+'°C';
       else if(r.type==='water'||r.type==='drink')pink=d.ml?d.ml+'ml':'';
+      else if(r.type==='vaccine')pink=d.note||'';
       else if(r.type==='growth'){var ks=[];if(d.weightKg)ks.push(d.weightKg+'kg');if(d.heightCm)ks.push(d.heightCm+'cm');if(d.headCm)ks.push('头围'+d.headCm+'cm');pink=ks.join(' ');sub=d.note||''}
+      if(!sub&&d.note&&r.type!=='vaccine')sub=d.note; // 便便性状/医院备注等：Piyo 备注全部亮出
       if(r.type==='note')sub='';
       nodes.push({t:st,pt:r.type,name:LABEL[r.type]||r.type,pink:pink,sub:sub,quote:quote,rec:r,delLabel:(LABEL[r.type]||r.type)+' '+fmtT(st)});
     }
@@ -658,7 +667,7 @@ function mileHTML(){
     var t=new Date(r.start_at).getTime();
     var days=Math.floor((t-(ymdUtc(BIRTH)-8*3600e3))/86400e3);
     var mo=Math.floor(days/30.4375);
-    var title=(r.data&&r.data.title)||r.note||'成就';
+    var title=(r.data&&(r.data.title||r.data.note))||r.note||'成就';
     var ds=bjDateStr(t);
     h+='<div class="ms" data-mid="'+r.id+'" data-mt="'+esc(title)+'"><div class="msdot"></div>'
       +'<div class="msage">'+mo+'月龄 · 出生第'+days+'天</div>'
@@ -678,8 +687,28 @@ document.getElementById('sumview').addEventListener('click',function(e){
   }
   var it=e.target.closest?e.target.closest('.ms'):null;
   if(it&&state.sum.sub==='mile'){
-    if(confirm('删除这条大事记？\n'+it.getAttribute('data-mt')))
-      post({action:'delete',id:it.getAttribute('data-mid')},function(){toast('已删除');state.mile.data=null;loadMile()});
+    var mid=it.getAttribute('data-mid'),mt=it.getAttribute('data-mt');
+    var sh=document.getElementById('sheet');
+    sh.innerHTML='<div class="shhead">🏆 '+esc(mt)+'</div>'
+      +'<button class="shbtn" id="msEdit">修改内容</button>'
+      +'<button class="shbtn" id="msDate">修改日期</button>'
+      +'<button class="shbtn danger" id="msDel">删除</button>'
+      +'<button class="shbtn" id="msCancel">取消</button>';
+    sh.style.display='block';document.getElementById('sheetbg').style.display='block';
+    var done=function(){toast('已更新');closeSheet();state.mile.data=null;state.data=null;loadMile()};
+    document.getElementById('msEdit').onclick=function(){
+      var v=prompt('大事记内容',mt);if(v===null)return;
+      post({action:'update',id:mid,dataPatch:{title:v,note:v},note:v},done)};
+    document.getElementById('msDate').onclick=function(){
+      var cur=(it.querySelector('.msd')||{}).textContent||todayStr();
+      var v=prompt('日期（YYYY-MM-DD）',cur.replace(/\//g,'-'));if(v===null)return;
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){toast('格式要像 2026-07-05');return}
+      var p=v.split('-');
+      post({action:'update',id:mid,start_at:new Date(Date.UTC(+p[0],+p[1]-1,+p[2],12,0)-8*3600e3).toISOString()},done)};
+    document.getElementById('msDel').onclick=function(){
+      if(confirm('删除这条大事记？\n'+mt))post({action:'delete',id:mid},done)};
+    document.getElementById('msCancel').onclick=closeSheet;
+    document.getElementById('sheetbg').onclick=closeSheet;
   }
 });
 /* ═══ 搜索 ═══ */
@@ -693,7 +722,7 @@ function doSearch(){
     if(!rs.length)out+='<div class="empty">没找到</div>';
     rs.forEach(function(r){
       var t=new Date(r.start_at).getTime(),ds=bjDateStr(t);
-      var det=(r.data&&(r.data.food||r.data.title))||'';
+      var det=(r.data&&(r.data.food||r.data.title||r.data.note))||'';
       out+='<div class="row" data-goto="'+ds+'"><span class="t" style="width:74px">'+ds.slice(5)+'<br>'+fmtT(t)+'</span>'+badge(r.type)
         +'<div class="mid"><div class="l1"><span class="nm">'+(LABEL[r.type]||r.type)+'</span>'+(det?'<span class="pk">'+esc(det)+'</span>':'')+'</div>'
         +(r.note?'<div class="qt">“'+esc(r.note)+'”</div>':'')+'</div></div>';
@@ -975,7 +1004,7 @@ function post(bodyObj,cb){
   .then(function(r){return r.json()}).then(function(d){if(d.ok){cb&&cb()}else{toast(d.msg||'操作失败')}})
   .catch(function(){toast('网络不通')});
 }
-function afterEdit(){toast('已修改');closeSheet();loadRec();state.sum.data=null}
+function afterEdit(){toast('已修改');closeSheet();loadRec();state.sum.data=null;state.mile.data=null;state.growth.data=null}
 function closeSheet(){document.getElementById('sheet').style.display='none';document.getElementById('sheetbg').style.display='none'}
 function editTime(rec){
   var st=new Date(rec.start_at).getTime();
@@ -995,6 +1024,7 @@ function editDetail(rec){
   else if(t==='walk'){var dw=num('散步时长（分钟）',d.durationMin||'');if(dw===null)return;patch={durationMin:dw,open:false}}
   else if(t==='temp'){var tc=num('体温（°C）',d.tempC);if(tc===null)return;patch={tempC:tc}}
   else if(t==='growth'){var wk=num('体重（kg，不改按取消）',d.weightKg);if(wk!==null){patch={weightKg:wk}}else{return}}
+  else if(t==='achievement'||t==='bigmotor'||t==='track'){var mv=prompt('大事记内容',d.title||d.note||rec.note||'');if(mv===null)return;post({action:'update',id:rec.id,dataPatch:{title:mv,note:mv},note:mv},afterEdit);return}
   else{var nt=prompt('备注内容',rec.note||'');if(nt===null)return;post({action:'update',id:rec.id,note:nt},afterEdit);return}
   post({action:'update',id:rec.id,dataPatch:patch},afterEdit);
 }
