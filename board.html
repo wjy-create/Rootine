@@ -128,6 +128,22 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .shbtn{display:block;width:100%;padding:15px;border:none;background:none;font-size:16px;color:var(--ink);border-bottom:1px solid var(--line)}
 .shbtn:last-child{border-bottom:none}
 .shbtn.danger{color:#e05c5c}
+/* 技能树 */
+#skillview{display:none;padding:10px 10px 16px}
+.dimtabs{display:flex;gap:6px;margin:2px 2px 10px;flex-wrap:wrap}
+.dimtabs button{border:none;border-radius:99px;padding:7px 13px;font-size:13px;background:#fff;color:var(--sub);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.dimtabs button.on{color:#fff}
+.prog{height:8px;background:#eee8e2;border-radius:99px;overflow:hidden;margin:6px 2px 4px}
+.prog i{display:block;height:100%;border-radius:99px}
+.progtxt{font-size:11.5px;color:var(--sub);margin:0 2px 4px}
+.bandgrp{background:#fff;border-radius:14px;margin:10px 0;padding:12px 14px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.bh{font-size:13px;font-weight:700;margin-bottom:9px}
+.bh .cur{font-size:10px;color:#fff;background:var(--pink);border-radius:99px;padding:2px 8px;margin-left:8px;font-weight:600}
+.nodes{display:flex;flex-wrap:wrap;gap:8px}
+.node{border:1.5px solid var(--line);border-radius:10px;padding:7px 10px;font-size:13px;background:#faf8f6;color:var(--ink);display:flex;align-items:center;gap:5px}
+.node[data-s="doing"]{border-color:#f2b41c;background:#fdf6e3}
+.node .np{font-size:10px;opacity:.7;padding-left:2px}
+.nn{width:100%;font-size:11px;color:var(--sub);margin-top:3px;text-wrap:pretty}
 </style></head><body>
 
 <div id="hdr">
@@ -154,13 +170,14 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
   <div id="statview"><div class="cards" id="statcards"></div></div>
   <div id="tl"></div>
   <div id="sumview"></div>
+  <div id="skillview"></div>
 </div>
 
 <div id="tabbar">
   <button class="tab on" data-tab="stat">状态</button>
   <button class="tab" data-tab="rec">记录</button>
   <button class="tab" data-tab="sum">摘要</button>
-  <button class="tab" data-tab="menu">菜单</button>
+  <button class="tab" data-tab="skill">技能</button>
 </div>
 <div id="toast"></div>
 <div id="sheetbg"></div><div id="sheet"></div>
@@ -703,6 +720,121 @@ function chartSVG(mode,R,pts,H){
   return s;
 }
 
+/* ═══ 技能树（初代 YoyoDiary 原版数据，标记存 Supabase 全家共享）═══ */
+var SKILL_BANDS=['0-3M','4-6M','7-9M','10-12M','13-18M','19-24M','25-30M','31-36M','3-6岁'];
+var SKILL_DIMS={
+ gross:{name:'粗大运动',icon:'🤸',color:'#7c5cc4',nodes:[
+  [0,'竖抱抬头'],[0,'趴卧抬头'],
+  [1,'撑地坐3分钟'],[1,'靠坐5秒'],[1,'翻身·趴转躺'],[1,'翻身·躺转趴'],[1,'来回打滚'],[1,'伸手要抱抱'],
+  [2,'独立坐稳10分钟'],[2,'扶物站立'],[2,'一阶爬·趴卧小燕飞'],[2,'二阶爬·匍匐爬行'],[2,'三阶爬·手膝爬行'],[2,'往正下方砸'],
+  [3,'盆腿骑'],[3,'蹲下捡东西'],[3,'独自站立'],[3,'扶栏蟹行'],[3,'牵手跟走'],[3,'越障爬行'],[3,'往前下方丢球'],
+  [4,'蹬腿骑车'],[4,'扶物单脚踢'],[4,'快步走·踮脚跑'],[4,'独自行走'],[4,'倒退拉车'],[4,'爬楼梯'],[4,'过肩扔球'],
+  [5,'避障骑行'],[5,'不扶物单脚踢'],[5,'原地并脚跳摸高'],[5,'避障行走'],[5,'沿线行走'],[5,'重叠步上下楼梯'],[5,'命中粘靶球'],
+  [6,'走独木桥'],[6,'腾空跑'],[6,'立定跳远'],[6,'高处跳下'],[6,'交叉步上下楼梯'],[6,'接住空中抛球'],[6,'接住地滚球'],
+  [7,'两轮平衡车'],[7,'走过河石'],[7,'分脚跨越跳'],[7,'攀爬'],[7,'挥拍击球'],
+  [8,'平衡车竞速'],[8,'踩梅花桩/高跷'],[8,'集体追逐游戏'],[8,'轮滑'],[8,'爬山攀岩'],[8,'打高尔夫球']
+ ]},
+ fine:{name:'精细动作',icon:'✋',color:'#d94f7a',nodes:[
+  [0,'抓握反射与松手'],
+  [1,'精准拍打'],[1,'主动够取'],[1,'挥臂摇晃'],[1,'全掌抓握'],
+  [2,'抠洞不取物'],[2,'拉/撕取'],[2,'间接取物'],[2,'把玩具放盒子里'],
+  [3,'抠洞取物'],[3,'开关柜门/推拉门'],[3,'翻纸板书'],[3,'拨弄开关拉环'],[3,'四指捏·猿式抓握'],[3,'马克杯放球取出'],[3,'圆环套柱'],[3,'双手分别拿玩具'],[3,'换手'],[3,'持物对敲'],
+  [4,'剥香蕉'],[4,'拨动/按压'],[4,'翻薄页书/机关书'],[4,'拉拉链'],[4,'三指捏'],[4,'瓶里放黄豆并倒出'],[4,'盖盖子/圆形嵌板'],[4,'插小棍/按硬币'],[4,'插拔笔帽'],[4,'拍手鼓掌'],[4,'拧糖果玩具'],
+  [5,'剥蛋壳/剥橘子'],[5,'开锁/组合锁'],[5,'扣安全带卡扣'],[5,'二指指尖捏'],[5,'试管放绿豆'],[5,'轮廓凹凸嵌板'],[5,'拼插8厘米雪花片'],[5,'端杯喝水不洒'],[5,'拧水龙头/拧毛巾'],
+  [6,'扣羊角扣'],[6,'解鞋带'],[6,'镶嵌蘑菇钉'],[6,'插拔钥匙/USB'],[6,'串半珠'],[6,'两杯来回倒水'],[6,'拧瓶盖一圈半'],
+  [7,'五指对捏'],[7,'儿童水壶冲奶粉'],[7,'拧螺丝三圈以上'],
+  [8,'剥荔枝'],[8,'编织'],[8,'自主穿衣服'],[8,'弹琴/打字'],[8,'穿针引线'],[8,'绣花'],[8,'咖啡拉花']
+ ]},
+ percep:{name:'感知觉',icon:'👁️',color:'#3a9d6a',nodes:[
+  [0,'湿尿屁反应'],[0,'香甜偏好期'],[0,'简单追声'],[0,'黑白偏好'],[0,'红白偏好'],[0,'四处张望'],
+  [1,'口腔探索行为'],[1,'咸味偏好期'],[1,'声音偏好'],[1,'浓色调偏好'],[1,'几何图案偏好'],[1,'人脸偏好'],[1,'红球平移及环绕'],
+  [2,'皮肤饥渴'],[2,'香妈妈臭爸爸'],[2,'拱食行为'],[2,'追踪不可见声音'],[2,'万物皆可敲'],[2,'深度视觉萌芽'],[2,'认实物卡片'],[2,'物品远离回返轨迹'],
+  [3,'触觉·光滑与粗糙'],[3,'酸得皱起脸'],[3,'随音乐晃动'],[3,'盯着小东西看'],[3,'折线与螺旋下落'],
+  [4,'触觉·水和沙子'],[4,'分辨不同香臭'],[4,'明确节拍'],[4,'敲击奏乐'],[4,'认简单剧情'],[4,'复杂交错轨迹'],
+  [5,'触觉·软硬冷热'],[5,'律动快慢拍'],[5,'故事阅读'],
+  [6,'旋律哼歌'],
+  [8,'美食品鉴'],[8,'打击乐/舞蹈'],[8,'唱儿歌'],[8,'找不同'],[8,'预判轨迹']
+ ]},
+ cog:{name:'认知',icon:'🧠',color:'#3b82c4',nodes:[
+  [0,'认识自己的手脚'],[0,'手脚触发反应'],
+  [1,'辨识父母'],[1,'外界与我有联系'],[1,'识别哭笑'],[1,'追视最后藏物'],[1,'操作单一开关'],
+  [2,'怕生反应'],[2,'寻找眼前藏物'],[2,'操作各处藏物'],
+  [3,'唤名反应'],[3,'辨识父母照片'],[3,'识别自己'],[3,'认识五官'],[3,'寻找多重藏物'],[3,'操作多按键设备'],
+  [4,'指物行为'],[4,'性别认知·男女'],[4,'辨识家人照片'],[4,'认识大肢体'],[4,'点红实验'],[4,'更多情绪'],[4,'按图索骥躲宝'],[4,'档位调节因果'],[4,'照顾娃娃'],[4,'模仿劳动'],[4,'颜色·红黄蓝绿'],[4,'日用品10-30个'],
+  [5,'各年龄男女'],[5,'丰富情绪'],[5,'参与家务劳动'],[5,'其他颜色'],[5,'日用品一级分类'],[5,'日月昼夜'],[5,'基础形状'],[5,'初级配对'],
+  [6,'性别刻板印象'],[6,'花纹认知'],[6,'日用品二级分类'],[6,'天气现象'],[6,'认识小肢体'],[6,'自然现象因果'],[6,'丰富职业扮演'],[6,'颜色形状'],[6,'高级配对'],[6,'数量概念'],
+  [8,'数理逻辑应用'],[8,'抽象组合形状'],[8,'立体形状'],[8,'事物逻辑关系'],[8,'季节物候'],[8,'地理知识'],[8,'思维题'],[8,'小社会角色游戏']
+ ]}};
+state.skill={data:null,dim:'gross'};
+function bandIdx(m){return m<=3?0:m<=6?1:m<=9?2:m<=12?3:m<=18?4:m<=24?5:m<=30?6:m<=36?7:8}
+function loadSkills(){
+  fetch(API_BASE+'?skills=1&token='+encodeURIComponent(TOKEN))
+  .then(function(r){return r.json()}).then(function(d){
+    if(d.ok===false){showErr(d.msg||'加载失败');return}
+    state.skill.data=d;if(state.view==='skill')renderSkillView();
+  }).catch(function(){showErr('网络不通')});
+}
+function renderSkillView(){
+  var sd=state.skill.data;if(!sd)return;
+  BIRTH=(sd.baby&&sd.baby.birth)||BIRTH;
+  document.getElementById('dlabel').textContent='🌳 技能树';
+  document.getElementById('babyline').textContent='🌱 '+((sd.baby&&sd.baby.name)||'宝宝')+' · '+weekAge(todayStr());
+  document.getElementById('todayBtn').style.display='none';
+  document.getElementById('sumbar').innerHTML='';
+  document.getElementById('fresh').innerHTML='点节点切换：⬜未开始 → 🔸正在练 → ✅已掌握 · 📝记观察笔记 · 全家共享';
+  var marks=sd.skills||{},dimKey=state.skill.dim,dim=SKILL_DIMS[dimKey];
+  var months=(Date.now()-ymdUtc(BIRTH))/86400e3/30.4375;
+  var curB=bandIdx(months);
+  var h='<div class="dimtabs">';
+  Object.keys(SKILL_DIMS).forEach(function(k){var d2=SKILL_DIMS[k];
+    h+='<button class="'+(k===dimKey?'on':'')+'" style="'+(k===dimKey?'background:'+d2.color:'')+'" data-dim="'+k+'">'+d2.icon+' '+d2.name+'</button>'});
+  h+='</div>';
+  var total=dim.nodes.length,done=0,doing=0;
+  dim.nodes.forEach(function(n,i){var s=(marks[dimKey+'_'+i]||{}).status;if(s==='done')done++;else if(s==='doing')doing++});
+  h+='<div class="prog"><i style="width:'+(total?Math.round(done/total*100):0)+'%;background:'+dim.color+'"></i></div>';
+  h+='<div class="progtxt">已掌握 '+done+' · 正在练 '+doing+' · 共 '+total+' 项</div>';
+  for(var b=0;b<SKILL_BANDS.length;b++){
+    var ns=[];dim.nodes.forEach(function(n,i){if(n[0]===b)ns.push([n,i])});
+    if(!ns.length)continue;
+    h+='<div class="bandgrp"><div class="bh" style="color:'+dim.color+'">'+SKILL_BANDS[b]+(b===curB?'<span class="cur">当前月龄</span>':'')+'</div><div class="nodes">';
+    ns.forEach(function(pair){var n=pair[0],i=pair[1],id=dimKey+'_'+i;
+      var o=marks[id]||{},s=o.status||'todo';
+      var style=s==='done'?'background:'+dim.color+';border-color:'+dim.color+';color:#fff':'';
+      h+='<div class="node" data-s="'+s+'" data-sid="'+id+'" style="'+style+'">'
+        +(s==='done'?'✅':s==='doing'?'🔸':'⬜')+' '+esc(n[1])
+        +'<span class="np" data-nid="'+id+'" data-nm="'+esc(n[1])+'">📝</span>'
+        +(o.note?'<div class="nn">📝 '+esc(o.note)+'</div>':'')
+        +'</div>';
+    });
+    h+='</div></div>';
+  }
+  document.getElementById('skillview').innerHTML=h;
+  fixPad();
+}
+document.getElementById('skillview').addEventListener('click',function(e){
+  var np=e.target.closest?e.target.closest('.np'):null;
+  var marks=(state.skill.data||{}).skills||{};
+  if(np){e.stopPropagation();
+    var nid=np.getAttribute('data-nid');
+    var v=prompt('观察笔记：'+np.getAttribute('data-nm'),(marks[nid]||{}).note||'');
+    if(v===null)return;
+    marks[nid]=marks[nid]||{};marks[nid].note=v;state.skill.data.skills=marks;renderSkillView();
+    post({action:'skill',id:nid,skillNote:v},function(){toast('已保存')});
+    return;
+  }
+  var node=e.target.closest?e.target.closest('.node'):null;if(!node)return;
+  var sid=node.getAttribute('data-sid');if(!sid)return;
+  var cur=(marks[sid]||{}).status||'todo';
+  var next=cur==='todo'?'doing':cur==='doing'?'done':'todo';
+  marks[sid]=marks[sid]||{};marks[sid].status=next;state.skill.data.skills=marks;
+  renderSkillView();
+  post({action:'skill',id:sid,status:next},null);
+});
+document.getElementById('skillview').addEventListener('click',function(e){
+  var b=e.target.closest?e.target.closest('.dimtabs button'):null;if(!b)return;
+  state.skill.dim=b.getAttribute('data-dim');renderSkillView();
+},true);
+
 /* ═══ 加载与切换 ═══ */
 function loadRec(){
   fetch(API_BASE+'?data=1&token='+encodeURIComponent(TOKEN)+'&date='+state.date)
@@ -811,15 +943,17 @@ function switchView(vw){
   document.getElementById('statview').style.display=(vw==='stat')?'block':'none';
   document.getElementById('tl').style.display=(vw==='rec')?'block':'none';
   document.getElementById('sumview').style.display=(vw==='sum')?'block':'none';
+  document.getElementById('skillview').style.display=(vw==='skill')?'block':'none';
   document.getElementById('subtabs').style.display=(vw==='sum')?'flex':'none';
   document.getElementById('sumbar').style.display=(vw==='rec')?'block':'none';
   document.getElementById('dpick').style.pointerEvents=(vw==='rec')?'auto':'none';
-  var hideArrows=(vw==='stat');
+  var hideArrows=(vw==='stat'||vw==='skill');
   document.getElementById('prevD').style.visibility=hideArrows?'hidden':'visible';
   document.getElementById('nextD').style.visibility=hideArrows?'hidden':'visible';
   if(vw==='stat'){state.date=todayStr();if(state.data)renderStat();loadRec()}
   if(vw==='rec'){if(state.data)renderRec();else loadRec()}
   if(vw==='sum'){if(!state.sum.from)state.sum.from=mondayOf(todayStr());if(state.sum.data)renderSum();else loadSum()}
+  if(vw==='skill'){if(state.skill.data)renderSkillView();loadSkills()}
   fixPad();
 }
 document.getElementById('prevD').onclick=function(){
@@ -844,8 +978,7 @@ document.querySelectorAll('#subtabs .stab').forEach(function(b){
 });
 document.querySelectorAll('#tabbar .tab').forEach(function(b){
   b.onclick=function(){var t=b.getAttribute('data-tab');
-    if(t==='rec'||t==='sum'||t==='stat'){switchView(t);return}
-    toast('删除=点时间轴条目 · 同步说明见配方文档');
+    switchView(t);
   };
 });
 document.addEventListener('click',function(e){var pop=document.getElementById('filtPop');if(pop&&pop.style.display==='block'&&!pop.contains(e.target)&&e.target.id!=='filtBtn')pop.style.display='none'});
