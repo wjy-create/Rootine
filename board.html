@@ -42,7 +42,7 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .stab.on{background:#fff;color:var(--pink)}
 #fresh{background:#fff;padding:2px 12px 6px;font-size:10.5px;color:var(--sub);line-height:1.5;text-wrap:pretty}
 #fresh .stale{color:#c07a2d;font-weight:600}
-#main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(60px + env(safe-area-inset-bottom))}
+#main{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;-webkit-overflow-scrolling:touch;padding-bottom:calc(60px + env(safe-area-inset-bottom))}
 #tl{background:#fff;margin:8px 8px 16px;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04)}
 .row{display:flex;align-items:flex-start;gap:9px;padding:9px 12px;border-bottom:1px solid var(--line)}
 .row:last-child{border-bottom:none}
@@ -409,8 +409,7 @@ function renderRec(){
     if(n===lastMilk)out+='<div class="gap">距上顿奶 · '+ago(n.t).replace('前','')+'</div>';
     out+='</div>'+(w.n?'<span class="by '+w.c+'">'+esc(w.n)+'</span>':'')+'</div>';
   });
-  document.getElementById('tl').innerHTML=out;
-  slideIn(document.getElementById('tl'));
+  swapIn(document.getElementById('tl'),function(el){el.innerHTML=out});
   fixPad();
 }
 
@@ -589,8 +588,7 @@ function renderSum(){
       h+='</div>';
     }
   }
-  v.innerHTML=h;
-  slideIn(v);
+  swapIn(v,function(el){el.innerHTML=h});
   var mb=document.getElementById('moonBtn');
   if(mb)mb.onclick=function(){state.sum.showSleep=!state.sum.showSleep;renderSum()};
   var fb=document.getElementById('filtBtn');
@@ -723,24 +721,43 @@ function loadSum(){
 }
 function showErr(m){var e=document.getElementById('err');e.style.display='block';e.textContent=m}
 function toast(m){var t=document.getElementById('toast');t.textContent=m;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(function(){t.style.display='none'},1800)}
-/* ── 切换过渡动画 ── */
+/* ── 切换过渡：双层对滑（旧页滑出+新页滑入，同帧运动，无变淡）── */
 var slideDir=0;
-function slideOut(){
+function nudge(){ // 点击瞬间的轻推反馈
   var el=document.getElementById(state.view==='sum'?'sumview':'tl');
-  el.style.transition='transform .15s ease,opacity .15s';
-  el.style.transform='translateX('+(slideDir>0?-64:64)+'px)';el.style.opacity='.2';
+  el.style.transition='transform .2s ease';
+  el.style.transform='translateX('+(slideDir>0?-16:16)+'px)';
 }
-function slideIn(el){
-  if(!slideDir){el.style.transition='none';el.style.transform='';el.style.opacity='1';return}
+function swapIn(el,renderFn){
+  if(!slideDir){el.style.transition='none';el.style.transform='';renderFn(el);return}
+  var dir=slideDir;slideDir=0;
+  var ghost=el.cloneNode(true);
+  ghost.style.position='absolute';
+  ghost.style.left=el.offsetLeft+'px';ghost.style.top=el.offsetTop+'px';
+  ghost.style.width=el.offsetWidth+'px';ghost.style.margin='0';
+  ghost.style.zIndex='5';ghost.style.transition='transform .26s ease';
+  ghost.style.pointerEvents='none';
+  el.parentNode.appendChild(ghost);
+  renderFn(el);
   el.style.transition='none';
-  el.style.transform='translateX('+(slideDir>0?64:-64)+'px)';el.style.opacity='.2';
+  el.style.transform='translateX('+(dir>0?100:-100)+'%)';
   requestAnimationFrame(function(){requestAnimationFrame(function(){
-    el.style.transition='transform .18s ease,opacity .18s';
-    el.style.transform='';el.style.opacity='1';slideDir=0;
+    el.style.transition='transform .26s ease';el.style.transform='';
+    ghost.style.transform='translateX('+(dir>0?-105:105)+'%)';
+    setTimeout(function(){if(ghost.parentNode)ghost.parentNode.removeChild(ghost)},300);
   })});
 }
-function navRec(dir){slideDir=dir;slideOut();state.date=shiftDate(state.date,dir);loadRec()}
-function navSum(dir){slideDir=dir;slideOut();state.sum.from=shiftDate(state.sum.from,dir*7);loadSum()}
+function navRec(dir){
+  slideDir=dir;state.date=shiftDate(state.date,dir);
+  var p=state.date.split('-');
+  document.getElementById('dlabel').textContent=p[0]+'年'+(+p[1])+'月'+(+p[2])+'日 周'+weekday(state.date); // 日期即时跳转
+  nudge();loadRec();
+}
+function navSum(dir){
+  slideDir=dir;state.sum.from=shiftDate(state.sum.from,dir*7);
+  document.getElementById('dlabel').textContent=mdLabel(state.sum.from)+' ~ '+mdLabel(shiftDate(state.sum.from,6));
+  nudge();loadSum();
+}
 /* ── 点按修改/删除 ── */
 function post(bodyObj,cb){
   bodyObj.token=TOKEN;
