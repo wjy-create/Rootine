@@ -19,6 +19,15 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 #dlabel{font-size:16px;font-weight:700;white-space:nowrap}
 #dpick{position:absolute;inset:0;opacity:0;width:100%;height:100%}
 #todayBtn{position:absolute;right:52px;top:8px;font-size:11px;border:1px solid rgba(255,255,255,.8);color:#fff;background:none;border-radius:99px;padding:2px 8px;display:none;z-index:2}
+#searchBtn{position:absolute;left:52px;top:5px;font-size:14px;border:none;background:none;padding:4px;display:none;z-index:2}
+/* 大事记 */
+.mstl{position:relative;margin:6px 6px 6px 10px;padding-left:20px;border-left:2.5px solid #f5d3e0}
+.ms{position:relative;background:#fff;border-radius:14px;padding:12px 15px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.msdot{position:absolute;left:-27px;top:17px;width:10px;height:10px;border-radius:50%;background:#f2b41c;border:2.5px solid #fff;box-shadow:0 0 0 2px #f2b41c}
+.msage{font-size:10.5px;color:var(--pink);font-weight:700;letter-spacing:.4px}
+.mst{font-size:16px;font-weight:600;margin:3px 0 2px;line-height:1.45;text-wrap:pretty}
+.msd{font-size:11px;color:var(--sub)}
+#msAdd{border:1.5px solid var(--pink);background:#fff;color:var(--pink);border-radius:99px;padding:5px 16px;font-size:13px;font-weight:600}
 #sumbar{background:#fff;border-bottom:1px solid var(--line);padding:7px 12px 6px;color:var(--ink)}
 .sumwrap{display:flex;flex-wrap:wrap;gap:5px 14px;align-items:center}
 .sumit{color:var(--ink);white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
@@ -153,11 +162,13 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
     <div class="dwrap"><span id="dlabel">…</span><input type="date" id="dpick"></div>
     <button class="arrow" id="nextD">›</button>
     <button id="todayBtn">回到今天</button>
+    <button id="searchBtn">🔍</button>
   </div>
   <div id="subtabs">
     <button class="stab" data-st="feed">进食</button>
     <button class="stab" data-st="sleep">睡眠</button>
     <button class="stab" data-st="grow">成长曲线</button>
+    <button class="stab" data-st="mile">大事记</button>
     <button class="stab on" data-st="all">ALL</button>
   </div>
   <div id="sumbar"></div>
@@ -188,7 +199,7 @@ var API_BASE='https://jddtovlvntdglfuezxdq.supabase.co/functions/v1/board';
 var BIRTH=null;
 var state={view:'rec',date:null,data:null,
   sum:{from:null,data:null,sub:'all',feedMode:'amount',showSleep:true,hidden:{}},
-  growth:{data:null,mode:'wh',range:12}};
+  growth:{data:null,mode:'wh',range:12},mile:{data:null}};
 // WHO(2006) 女宝参考带（0–24月，近似 ±2SD）
 var WHO={
  wt:{lo:[2.4,3.2,3.9,4.5,5.0,5.4,5.7,6.0,6.3,6.5,6.7,6.9,7.0,7.2,7.4,7.6,7.7,7.9,8.1,8.2,8.4,8.6,8.7,8.9,9.0],
@@ -558,6 +569,10 @@ function renderSum(){
     if(!state.growth.data){h+='<div class="empty">加载成长数据…</div>';loadGrowth()}
     else h+=growHTML();
   }
+  if(sub==='mile'){
+    if(!state.mile.data){h+='<div class="empty">翻开大事记…</div>';loadMile()}
+    else h+=mileHTML();
+  }
   if(sub==='sleep'){
     var yst=shiftDate(todayStr(),-1),tots=[],naps=[];
     days.forEach(function(ds){
@@ -625,6 +640,69 @@ function renderSum(){
   document.querySelectorAll('.seg2 button[data-gr]').forEach(function(b){b.onclick=function(){state.growth.range=+b.getAttribute('data-gr');renderSum()}});
   fixPad();
 }
+/* ═══ 大事记（摘要二级）═══ */
+function loadMile(){
+  fetch(API_BASE+'?milestones=1&token='+encodeURIComponent(TOKEN))
+  .then(function(r){return r.json()}).then(function(d){
+    if(d.ok===false){showErr(d.msg||'加载失败');return}
+    state.mile.data=d;if(state.view==='sum'&&state.sum.sub==='mile')renderSum();
+  }).catch(function(){showErr('网络不通')});
+}
+function mileHTML(){
+  var md=state.mile.data;BIRTH=(md.baby&&md.baby.birth)||BIRTH;
+  var ms=(md.milestones||[]).slice().reverse(); // 最新在上
+  var h='<div class="ctlrow"><span class="progtxt" style="font-size:13px">🏆 已记下 <b style="color:var(--pink)">'+ms.length+'</b> 件人生大事</span><button id="msAdd">＋ 记一件</button></div>';
+  if(!ms.length)h+='<div class="empty">还没有大事记。对「记一笔」说"第一次××"，或点上面「记一件」。</div>';
+  h+='<div class="mstl">';
+  ms.forEach(function(r){
+    var t=new Date(r.start_at).getTime();
+    var days=Math.floor((t-(ymdUtc(BIRTH)-8*3600e3))/86400e3);
+    var mo=Math.floor(days/30.4375);
+    var title=(r.data&&r.data.title)||r.note||'成就';
+    var ds=bjDateStr(t);
+    h+='<div class="ms" data-mid="'+r.id+'" data-mt="'+esc(title)+'"><div class="msdot"></div>'
+      +'<div class="msage">'+mo+'月龄 · 出生第'+days+'天</div>'
+      +'<div class="mst">'+esc(title)+'</div>'
+      +'<div class="msd">'+ds.replace(/-/g,'/')+'</div></div>';
+  });
+  h+='</div>';
+  return h;
+}
+document.getElementById('sumview').addEventListener('click',function(e){
+  var add=e.target.closest?e.target.closest('#msAdd'):null;
+  if(add){
+    var txt=prompt('这件大事是什么？（例：第一次骑滑行车）');if(!txt)return;
+    var dt=prompt('哪一天？（YYYY-MM-DD，默认今天）',todayStr());if(dt===null)return;
+    post({action:'addMilestone',text:txt,date:dt||todayStr(),who:'妈妈'},function(){toast('已记入大事记 🏆');state.mile.data=null;loadMile()});
+    return;
+  }
+  var it=e.target.closest?e.target.closest('.ms'):null;
+  if(it&&state.sum.sub==='mile'){
+    if(confirm('删除这条大事记？\n'+it.getAttribute('data-mt')))
+      post({action:'delete',id:it.getAttribute('data-mid')},function(){toast('已删除');state.mile.data=null;loadMile()});
+  }
+});
+/* ═══ 搜索 ═══ */
+function doSearch(){
+  var q=prompt('搜索关键字（食物 / 原话 / 内容）');if(!q)return;
+  fetch(API_BASE+'?q='+encodeURIComponent(q)+'&token='+encodeURIComponent(TOKEN))
+  .then(function(r){return r.json()}).then(function(d){
+    if(d.ok===false){toast(d.msg||'搜索失败');return}
+    var rs=d.results||[];
+    var out='<div class="row" style="background:var(--pinklite)"><div class="mid"><div class="l1"><span class="nm">🔍 “'+esc(q)+'” · '+rs.length+' 条</span><span class="pk" data-clear="1" style="cursor:pointer">✕ 清除</span></div><div class="l2">点结果跳到那一天</div></div></div>';
+    if(!rs.length)out+='<div class="empty">没找到</div>';
+    rs.forEach(function(r){
+      var t=new Date(r.start_at).getTime(),ds=bjDateStr(t);
+      var det=(r.data&&(r.data.food||r.data.title))||'';
+      out+='<div class="row" data-goto="'+ds+'"><span class="t" style="width:74px">'+ds.slice(5)+'<br>'+fmtT(t)+'</span>'+badge(r.type)
+        +'<div class="mid"><div class="l1"><span class="nm">'+(LABEL[r.type]||r.type)+'</span>'+(det?'<span class="pk">'+esc(det)+'</span>':'')+'</div>'
+        +(r.note?'<div class="qt">“'+esc(r.note)+'”</div>':'')+'</div></div>';
+    });
+    document.getElementById('tl').innerHTML=out;
+  }).catch(function(){toast('网络不通')});
+}
+document.getElementById('searchBtn').onclick=doSearch;
+
 /* ═══ 成长曲线（摘要二级）═══ */
 function loadGrowth(){
   fetch(API_BASE+'?growth=1&token='+encodeURIComponent(TOKEN))
@@ -950,6 +1028,7 @@ function switchView(vw){
   var hideArrows=(vw==='stat'||vw==='skill');
   document.getElementById('prevD').style.visibility=hideArrows?'hidden':'visible';
   document.getElementById('nextD').style.visibility=hideArrows?'hidden':'visible';
+  document.getElementById('searchBtn').style.display=(vw==='rec')?'block':'none';
   if(vw==='stat'){state.date=todayStr();if(state.data)renderStat();loadRec()}
   if(vw==='rec'){if(state.data)renderRec();else loadRec()}
   if(vw==='sum'){if(!state.sum.from)state.sum.from=mondayOf(todayStr());if(state.sum.data)renderSum();else loadSum()}
@@ -965,7 +1044,10 @@ document.getElementById('todayBtn').onclick=function(){
   else{state.date=todayStr();loadRec()}};
 document.getElementById('dpick').onchange=function(){if(this.value){state.date=this.value;loadRec()}};
 document.getElementById('tl').addEventListener('click',function(e){
+  if(e.target.getAttribute&&e.target.getAttribute('data-clear')){loadRec();return}
   var row=e.target.closest?e.target.closest('.row'):null;if(!row)return;
+  var go=row.getAttribute('data-goto');
+  if(go){state.date=go;loadRec();return}
   var id=row.getAttribute('data-id');if(!id)return;
   var rec=null;(state.data&&state.data.records||[]).forEach(function(r){if(r.id===id)rec=r});
   if(!rec)return;
