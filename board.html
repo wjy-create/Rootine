@@ -359,6 +359,18 @@ function statCards(rs){
     else if(sd.durationMin){var wk=sl._t+sd.durationMin*60000;slIcon='wake';
       cv=fmtT(wk)+' 起床<br>已醒 <b>'+durTxt5((now-wk)/60000)+'</b>';
       cs='上一觉 '+durTxt(sd.durationMin)+' · '+cs}}
+  // 大人算法（姥姥口径）：晚6点为分割线，从上一个晚6点起累计到现在（含进行中）
+  var t18=dayStartMs(today)+18*3600e3;
+  var cyc0=now>=t18?t18:t18-86400e3;
+  var cycMin=0;
+  rs.forEach(function(r){
+    if(r.type!=='sleep')return;var d=r.data||{};
+    var st=new Date(r.start_at).getTime();
+    var en=d.open?now:(d.durationMin?st+d.durationMin*60000:null);
+    if(!en)return;
+    cycMin+=Math.max(0,(Math.min(en,now)-Math.max(st,cyc0))/60000);
+  });
+  cs+='<br>'+(cyc0===t18?'今晚6点':'昨晚6点')+'到现在共睡 '+durTxt5(cycMin);
   h+='<div class="card"><div class="ck">'+badge(slIcon)+'睡</div><div class="cv">'+cv+'</div><div class="cs">'+cs+'</div></div>';
   // 换（上次便便跨任意天数：优先窗口内记录，否则用服务端 lastPoopAt）
   var pp=pick(['diaper_poop']);
