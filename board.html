@@ -593,7 +593,7 @@ function renderSum(){
   }
   if(sub==='mile'){
     if(!state.mile.data){h+='<div class="empty">翻开大事记…</div>';loadMile()}
-    else h+=mileHTML();
+    else{h+=mileHTML();if(Date.now()-(state.mile.at||0)>30e3)loadMile()} // 每次进页先显缓存、后台刷新（语音新记的成就不再漏）
   }
   if(sub==='sleep'){
     var yst=shiftDate(todayStr(),-1),tots=[],naps=[];
@@ -667,7 +667,9 @@ function loadMile(){
   fetch(API_BASE+'?milestones=1&token='+encodeURIComponent(TOKEN))
   .then(function(r){return r.json()}).then(function(d){
     if(d.ok===false){showErr(d.msg||'加载失败');return}
-    state.mile.data=d;if(state.view==='sum'&&state.sum.sub==='mile')renderSum();
+    var fresh=JSON.stringify(d.milestones||[])!==JSON.stringify((state.mile.data||{}).milestones||[]);
+    state.mile.data=d;state.mile.at=Date.now();
+    if(fresh&&state.view==='sum'&&state.sum.sub==='mile')renderSum();
   }).catch(function(){showErr('网络不通')});
 }
 function mileHTML(){
