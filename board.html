@@ -553,7 +553,7 @@ function renderSum(){
     var avF=function(a){return Math.round(a.reduce(function(x,y){return x+y},0)/a.length)};
     var feedAvg=fA.length?'<div class="avgfloat"><span style="border:1.5px solid #f5a623;color:#a8720c">平均奶 '+avF(fA)+'ml</span><span style="border:1.5px solid #8cc63e;color:#5e8f2e">平均辅食 '+avF(sA)+'ml</span><span style="border:1.5px solid #f27ba3;color:#c14e7d">平均母乳 '+avF(bA)+'分</span></div>':'';
     if(state.sum.feedMode==='time'){
-      h+=gridHTML(rs,{h:Math.max(300,sleepH()-40),overlay:feedAvg,types:FEEDT,sleep:false,counts:function(ds){
+      h+=gridHTML(rs,{h:sleepH(),overlay:feedAvg,types:FEEDT,sleep:false,counts:function(ds){
         var b=0,f=0,s=0;rs.forEach(function(r){if(!inDay(r,ds))return;if(r.type==='feed_breast')b++;if(r.type==='feed_formula')f++;if(r.type==='feed_solid')s++});
         var o=[];if(b)o.push('<span style="color:#f27ba3">●</span><b>'+b+'次</b>');if(f)o.push('<span style="color:#f5a623">●</span><b>'+f+'次</b>');if(s)o.push('<span style="color:#8cc63e">●</span><b>'+s+'次</b>');
         return o.join('<br>')||'—'}});
