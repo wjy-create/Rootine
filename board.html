@@ -484,7 +484,7 @@ function sleepBlocks(rs){
 }
 function gridHTML(rs,opt){
   var days=weekDays();
-  var h='<div class="gridwrap"><div class="grid" style="height:'+(opt.h||gridH())+'px">';
+  var h='<div class="gridwrap">'+(opt.overlay||'')+'<div class="grid" style="height:'+(opt.h||gridH())+'px">';
   for(var si=1;si<7;si+=2)h+='<div class="stripe" style="left:'+(si*100/7)+'%;width:'+(100/7)+'%"></div>';
   for(var hh=0;hh<=24;hh+=1){var pct=hh/24*100;
     h+='<div class="hline'+(hh%3===0?' h3':'')+'" style="top:'+pct+'%">'+(hh%3===0?'<span class="hlab">'+hh+'</span>':'')+'</div>'}
@@ -539,8 +539,21 @@ function renderSum(){
   }
   if(sub==='feed'){
     h+='<div class="ctlrow"><span></span><div class="seg2"><button data-fm="time" class="'+(state.sum.feedMode==='time'?'on':'')+'">时间</button><button data-fm="amount" class="'+(state.sum.feedMode==='amount'?'on':'')+'">量</button></div><span></span></div>';
+    // 周均（截至昨天）——时间视图悬浮在图表右上角，量视图仍在底部一行
+    var ystF=shiftDate(todayStr(),-1),fA=[],sA=[],bA=[];
+    days.forEach(function(ds){
+      if(ymdUtc(ds)>ymdUtc(ystF))return;
+      var f=0,s2=0,bm=0,any=false;
+      rs.forEach(function(r){if(!inDay(r,ds))return;var d=r.data||{};
+        if(r.type==='feed_formula'){f+=(+d.ml||0);any=true}
+        if(r.type==='feed_solid'){s2+=(+d.ml||0);any=true}
+        if(r.type==='feed_breast'){bm+=(+d.leftMin||0)+(+d.rightMin||0)+(+d.min||0);any=true}});
+      if(any){fA.push(f);sA.push(s2);bA.push(bm)}
+    });
+    var avF=function(a){return Math.round(a.reduce(function(x,y){return x+y},0)/a.length)};
+    var feedAvg=fA.length?'<div class="avgfloat"><span style="border:1.5px solid #f5a623;color:#a8720c">平均奶 '+avF(fA)+'ml</span><span style="border:1.5px solid #8cc63e;color:#5e8f2e">平均辅食 '+avF(sA)+'ml</span><span style="border:1.5px solid #f27ba3;color:#c14e7d">平均母乳 '+avF(bA)+'分</span></div>':'';
     if(state.sum.feedMode==='time'){
-      h+=gridHTML(rs,{types:FEEDT,sleep:false,counts:function(ds){
+      h+=gridHTML(rs,{h:Math.max(300,sleepH()-40),overlay:feedAvg,types:FEEDT,sleep:false,counts:function(ds){
         var b=0,f=0,s=0;rs.forEach(function(r){if(!inDay(r,ds))return;if(r.type==='feed_breast')b++;if(r.type==='feed_formula')f++;if(r.type==='feed_solid')s++});
         var o=[];if(b)o.push('<span style="color:#f27ba3">●</span><b>'+b+'次</b>');if(f)o.push('<span style="color:#f5a623">●</span><b>'+f+'次</b>');if(s)o.push('<span style="color:#8cc63e">●</span><b>'+s+'次</b>');
         return o.join('<br>')||'—'}});
@@ -570,20 +583,8 @@ function renderSum(){
       h+='</div><div class="daylabs" style="padding-left:34px">'+days.map(function(ds){var dow=new Date(ymdUtc(ds)).getUTCDay();return '<div class="daylab'+(dow===6?' sat':'')+(dow===0?' sun':'')+'">'+mdLabel(ds)+'</div>'}).join('')+'</div>';
       h+='<div class="legend"><span class="lg"><i style="background:#f5a623"></i>配方奶</span><span class="lg"><i style="background:#8cc63e"></i>辅食</span><span class="lg"><i style="background:#54b8e0"></i>水/饮料</span></div>';
     }
-    // 周均值（截至昨天），方便逐周对比
-    var ystF=shiftDate(todayStr(),-1),fA=[],sA=[],bA=[];
-    days.forEach(function(ds){
-      if(ymdUtc(ds)>ymdUtc(ystF))return;
-      var f=0,s2=0,bm=0,any=false;
-      rs.forEach(function(r){if(!inDay(r,ds))return;var d=r.data||{};
-        if(r.type==='feed_formula'){f+=(+d.ml||0);any=true}
-        if(r.type==='feed_solid'){s2+=(+d.ml||0);any=true}
-        if(r.type==='feed_breast'){bm+=(+d.leftMin||0)+(+d.rightMin||0)+(+d.min||0);any=true}});
-      if(any){fA.push(f);sA.push(s2);bA.push(bm)}
-    });
-    if(fA.length){
-      var av=function(a){return Math.round(a.reduce(function(x,y){return x+y},0)/a.length)};
-      h+='<div class="legend" style="padding-top:10px">周均/天（截至昨天）：<span style="color:#f5a623;font-weight:600">奶 '+av(fA)+'ml</span>　<span style="color:#8cc63e;font-weight:600">辅食 '+av(sA)+'ml</span>　<span style="color:#f27ba3;font-weight:600">母乳 '+av(bA)+'分钟</span></div>';
+    if(state.sum.feedMode!=='time'&&fA.length){
+      h+='<div class="legend" style="padding-top:8px">平均：<span style="color:#f5a623;font-weight:600">奶 '+avF(fA)+'ml</span>　<span style="color:#8cc63e;font-weight:600">辅食 '+avF(sA)+'ml</span>　<span style="color:#f27ba3;font-weight:600">母乳 '+avF(bA)+'分</span></div>';
     }
   }
   if(sub==='grow'){
