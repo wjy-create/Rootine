@@ -312,14 +312,19 @@ function buildNodes(rs){
       var mtitle=d.title||d.note||r.note||'';
       nodes.push({t:st,pt:r.type,name:r.type==='achievement'?'成就':(LABEL[r.type]||r.type),pink:mtitle,rec:r,delLabel:'成就 '+fmtT(st)+(mtitle?'（'+mtitle.slice(0,12)+'…）':'')});
     }else{
-      var pink='',sub='';
+      var pink='',sub='',nm=LABEL[r.type]||r.type;
       if(r.type==='temp')pink=(d.tempC||'?')+'°C';
       else if(r.type==='water'||r.type==='drink')pink=d.ml?d.ml+'ml':'';
       else if(r.type==='vaccine')pink=d.note||'';
-      else if(r.type==='growth'){var ks=[];if(d.weightKg)ks.push(d.weightKg+'kg');if(d.heightCm)ks.push(d.heightCm+'cm');if(d.headCm)ks.push('头围'+d.headCm+'cm');pink=ks.join(' ');sub=d.note||''}
+      else if(r.type==='growth'){ // 按字段直显具体项名，不再统一叫「测量」
+        var gk=[];
+        if(d.weightKg!=null){gk.push('体重');pink=d.weightKg+'kg'}
+        if(d.heightCm!=null){gk.push('身高');pink=(pink?pink+' ':'')+d.heightCm+'cm'}
+        if(d.headCm!=null){gk.push('头围');pink=(pink?pink+' ':'')+d.headCm+'cm'}
+        if(gk.length)nm=gk.join('·'); sub=d.note||''}
       if(!sub&&d.note&&r.type!=='vaccine')sub=d.note; // 便便性状/医院备注等：Piyo 备注全部亮出
       if(r.type==='note')sub='';
-      nodes.push({t:st,pt:r.type,name:LABEL[r.type]||r.type,pink:pink,sub:sub,quote:quote,rec:r,delLabel:(LABEL[r.type]||r.type)+' '+fmtT(st)});
+      nodes.push({t:st,pt:r.type,name:nm,pink:pink,sub:sub,quote:quote,rec:r,delLabel:nm+' '+fmtT(st)});
     }
   });
   nodes.sort(function(a,b){return a.t-b.t});
