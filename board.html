@@ -296,8 +296,12 @@ function buildNodes(rs){
       nodes.push({t:st,pt:'sleep',name:'睡觉',pink:d.open?'睡着中…':'',quote:quote,rec:r,sk:1,delLabel:'睡眠 '+fmtT(st)});
       if(d.durationMin)nodes.push({t:st+d.durationMin*60000,pt:'wake',name:'起床',pink:durTxt(d.durationMin),rec:r,kind:'wake',sk:1,delLabel:'睡眠 '+fmtT(st)+'（连同睡觉节点）'});
     }else if(r.type==='walk'){
-      nodes.push({t:st,pt:'walk',name:'散步 · 出门',pink:d.open?'进行中…':'',quote:quote,rec:r,delLabel:'散步 '+fmtT(st)});
+      if(d.needsStart){ // v29 反向配对：先记到家，出门待补
+        nodes.push({t:st,pt:'walk_back',name:'散步 · 到家',pink:'出门时间待补',quote:quote,rec:r,delLabel:'散步(待补出门) '+fmtT(st)});
+      }else{
+      nodes.push({t:st,pt:'walk',name:'散步 · 出门',pink:d.open?'进行中…':(d.needsEnd?'到家时间待补':''),quote:quote,rec:r,delLabel:'散步 '+fmtT(st)});
       if(d.durationMin)nodes.push({t:st+d.durationMin*60000,pt:'walk_back',name:'回来',pink:durTxt(d.durationMin),rec:r,delLabel:'散步 '+fmtT(st)+'（连同出门节点）'});
+      }
     }else if(r.type==='feed_breast'){
       nodes.push({t:st,pt:'feed_breast',name:'母乳',pink:breastPink(d),quote:quote,rec:r,kind:'milk',delLabel:'母乳 '+fmtT(st)});
     }else if(r.type==='feed_formula'){
