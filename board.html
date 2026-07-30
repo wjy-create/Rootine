@@ -658,12 +658,23 @@ function renderSum(){
   if(fb){fb.onclick=function(e){e.stopPropagation();var pop=document.getElementById('filtPop');
     if(pop.style.display==='block'){pop.style.display='none';return}
     var present={};rs.forEach(function(r){if(r.type!=='sleep')present[r.type]=1});
-    var ph='';Object.keys(present).forEach(function(t){
+    // 固定语义排序：进食 → 排泄 → 护理 → 医疗 → 成长/其他（同类相邻，顺序稳定）
+    var ORDER=['feed_breast','feed_formula','feed_bottle','feed_pump','feed_solid','snack','water','drink','diaper_poop','diaper_pee','diaper_both','bath','walk','vitamin','temp','medicine','hospital','vaccine','cough','vomit','rash','injury','growth','achievement','bigmotor','track','nail','haircut','note'];
+    var types=Object.keys(present).sort(function(a,b){
+      var ia=ORDER.indexOf(a),ib=ORDER.indexOf(b);
+      return (ia<0?999:ia)-(ib<0?999:ib)});
+    var ph='<div style="display:flex;gap:8px;padding:6px 14px 8px;border-bottom:1px solid var(--line);margin-bottom:4px">'
+      +'<button id="filtAll" style="flex:1;border:1.5px solid var(--pink);background:#fff;color:var(--pink);border-radius:99px;padding:4px 0;font-size:12.5px;font-weight:600">全选</button>'
+      +'<button id="filtNone" style="flex:1;border:1.5px solid #bbb;background:#fff;color:#888;border-radius:99px;padding:4px 0;font-size:12.5px;font-weight:600">全不选</button></div>';
+    types.forEach(function(t){
       ph+='<label><input type="checkbox" data-t="'+t+'" '+(state.sum.hidden[t]?'':'checked')+'> '+(LABEL[t]||t)+'</label>'});
-    pop.innerHTML=ph||'<label>本周无记录</label>';pop.style.display='block';
+    pop.innerHTML=ph+(types.length?'':'<label>本周无记录</label>');pop.style.display='block';
     pop.querySelectorAll('input').forEach(function(cb){cb.onchange=function(){
       if(cb.checked)delete state.sum.hidden[cb.getAttribute('data-t')];else state.sum.hidden[cb.getAttribute('data-t')]=1;
       renderSum()}});
+    var ba=document.getElementById('filtAll'),bn=document.getElementById('filtNone');
+    if(ba)ba.onclick=function(ev2){ev2.stopPropagation();types.forEach(function(t){delete state.sum.hidden[t]});renderSum()};
+    if(bn)bn.onclick=function(ev2){ev2.stopPropagation();types.forEach(function(t){state.sum.hidden[t]=1});renderSum()};
   }}
   document.querySelectorAll('.seg2 button[data-fm]').forEach(function(b){b.onclick=function(){state.sum.feedMode=b.getAttribute('data-fm');renderSum()}});
   document.querySelectorAll('.seg2 button[data-sm]').forEach(function(b){b.onclick=function(){state.sum.sleepMode=b.getAttribute('data-sm');renderSum()}});
