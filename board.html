@@ -318,6 +318,7 @@ function buildNodes(rs){
     }else{
       var pink='',sub='',nm=LABEL[r.type]||r.type;
       if(r.type==='temp')pink=(d.tempC||'?')+'°C';
+      else if(r.type==='feed_pump'){pink=(d.ml?d.ml+'ml':'')+(d.side?'（'+d.side+'）':'');sub=d.note||''}
       else if(r.type==='water'||r.type==='drink')pink=d.ml?d.ml+'ml':'';
       else if(r.type==='vaccine')pink=d.note||'';
       else if(r.type==='growth'){ // 按字段直显具体项名，不再统一叫「测量」
@@ -358,7 +359,25 @@ function statCards(rs){
     var det=fd.type==='feed_breast'?breastPink(fdd):(fd.type==='feed_formula'?formulaPink(fdd):((fdd.ml?fdd.ml+'ml ':'')+(fdd.food||'')));
     cv=fmtT(fd._t)+' '+(LABEL[fd.type]||'')+' '+esc(det)+'<br>距现在 <b>'+durTxt5((now-fd._t)/60000)+'</b>'}
   cs='今日 配方奶 '+tF+'ml · 辅食 '+tS+' 顿'+(tSml?'（'+tSml+'ml）':'')+' · 亲喂 '+tB+' 次';
-  if(tBL||tBR)cs+='<br>亲喂 左'+tBL+'分 右'+tBR+'分 · 下顿先喂'+(tBL<tBR?'左':(tBR<tBL?'右':'任一'))+'边';
+  // 下顿先喂哪边：看两侧各自「上一次被排空」的时刻（亲喂+挤奶都算），更久没排的一侧优先（防胀奶）；分钟数只作展示
+  var lastL=0,lastR=0;
+  rs.forEach(function(r){
+    var d=r.data||{};var st=new Date(r.start_at).getTime();
+    if(r.type==='feed_pump'){ // 挤奶=该侧被排空
+      if(d.side==='左'||d.side==='双侧'){if(st>lastL)lastL=st}
+      if(d.side==='右'||d.side==='双侧'){if(st>lastR)lastR=st}
+      return;
+    }
+    if(r.type!=='feed_breast')return;
+    if(d.segs&&d.segs.length){var eL=0,eR=0;d.segs.forEach(function(g){var en=g.end||st;if(g.s==='L'&&en>eL)eL=en;if(g.s==='R'&&en>eR)eR=en});if(eL>lastL)lastL=eL;if(eR>lastR)lastR=eR;}
+    else{var fedL=(+d.leftMin||0)>0||(+d.min||0)>0,fedR=(+d.rightMin||0)>0||(+d.min||0)>0;
+      if(fedL&&st>lastL)lastL=st;if(fedR&&st>lastR)lastR=st;}
+  });
+  if(tBL||tBR||lastL||lastR){
+    var side=(!lastL&&lastR)?'左':((!lastR&&lastL)?'右':(lastL<lastR?'左':(lastR<lastL?'右':(tBL<tBR?'左':(tBR<tBL?'右':'任一')))));
+    var sideT=side==='左'?lastL:(side==='右'?lastR:0);
+    cs+='<br>亲喂 左'+tBL+'分 右'+tBR+'分 · 下顿先喂'+side+'边'+(sideT?'（该侧距上次 '+ago5(sideT)+'）':'');
+  }
   h+='<div class="card"><div class="ck">'+badge('feed_formula')+'吃</div><div class="cv">'+cv+'</div><div class="cs">'+cs+'</div></div>';
   // 睡
   var sl=pick(['sleep']);cv='今天还没有睡眠记录';cs='今日累计 '+durTxt5(slMin)+(napMin?'（小觉 '+durTxt5(napMin)+'）':'');
