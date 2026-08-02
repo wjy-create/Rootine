@@ -425,7 +425,7 @@ function renderStat(){
 function gridH(){return Math.max(400, window.innerHeight - document.getElementById('hdr').offsetHeight - 168)}
 function sleepH(){return Math.max(340, window.innerHeight - document.getElementById('hdr').offsetHeight - 212)}
 function daySummaryHTML(rs,dateStr){
-  var bN=0,bL=0,bR=0,bMin=0,fN=0,fMl=0,sN=0,sMl=0,slMin=0,napMin=0,poop=0,vit=0,bath=0,wt=null;
+  var bN=0,bL=0,bR=0,bMin=0,fN=0,fMl=0,sN=0,sMl=0,slMin=0,napMin=0,poop=0,pee=0,vit=0,bath=0,wt=null;
   rs.forEach(function(r){
     if(r.type==='sleep'){var ov=sleepOverlapMin(r,dateStr);if(ov){slMin+=ov;if(isNapRec(r))napMin+=ov}return}
     if(bjDateStr(new Date(r.start_at).getTime())!==dateStr)return;
@@ -434,6 +434,7 @@ function daySummaryHTML(rs,dateStr){
     if(r.type==='feed_formula'){fN++;fMl+=(+d.ml||0)}
     if(r.type==='feed_solid'){sN++;sMl+=(+d.ml||0)}
     if(r.type==='diaper_poop')poop++;
+    if(r.type==='diaper_pee')pee++;
     if(r.type==='vitamin')vit++;if(r.type==='bath')bath++;
     if(r.type==='growth'&&d.weightKg)wt=d.weightKg;
   });
@@ -444,6 +445,7 @@ function daySummaryHTML(rs,dateStr){
   if(sN)out.push(mk('feed_solid',sN+'次',sMl?sMl+'ml':''));
   if(slMin)out.push(mk('sleep',durTxt5(slMin),napMin?'小觉'+durTxt5(napMin):''));
   if(poop)out.push(mk('diaper_poop',poop+'次',''));
+  if(pee)out.push(mk('diaper_pee',pee+'次',''));
   if(vit)out.push(mk('vitamin',vit+'次',''));if(bath)out.push(mk('bath',bath+'次',''));
   if(wt)out.push(mk('growth',wt+'kg',''));
   return '<div class="sumwrap">'+(out.length?out.map(function(s){return '<span class="sumit">'+s+'</span>'}).join(''):'<span class="sumit" style="color:var(--sub)">这一天还没有记录</span>')+'</div>';
