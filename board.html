@@ -209,7 +209,7 @@ var WHO={
  hd:{lo:[31.7,34.3,36.0,37.2,38.2,39.0,39.7,40.2,40.7,41.2,41.5,41.9,42.2,42.4,42.7,42.9,43.1,43.3,43.5,43.6,43.8,44.0,44.1,44.3,44.4],
      hi:[36.1,38.8,40.5,41.9,42.9,43.8,44.6,45.3,45.9,46.5,46.9,47.3,47.6,48.0,48.2,48.5,48.7,48.9,49.1,49.3,49.5,49.6,49.8,50.0,50.1]}};
 
-var LABEL={feed_breast:'母乳',feed_formula:'配方奶',feed_bottle:'瓶喂',feed_pump:'挤奶',feed_solid:'辅食',water:'喝水',drink:'饮料',snack:'点心',diaper_poop:'便便',diaper_pee:'尿尿',vitamin:'维生素D3',bath:'洗澡',temp:'体温',swim:'游泳',vaccine:'疫苗',hospital:'医院',growth:'测量',note:'备注',achievement:'成就',bigmotor:'大运动',track:'追视追听',nail:'剪指甲',haircut:'理发',walk:'散步',medicine:'吃药',cough:'咳嗽',vomit:'呕吐',rash:'疹子',injury:'受伤'};
+var LABEL={feed_breast:'母乳',feed_formula:'配方奶',feed_bottle:'瓶喂',feed_pump:'挤奶',feed_solid:'辅食',water:'喝水',drink:'饮料',snack:'点心',diaper_poop:'便便',diaper_pee:'尿尿',vitamin:'维生素D3',bath:'洗澡',temp:'体温',swim:'游泳',vaccine:'疫苗',hospital:'医院',growth:'测量',note:'备注',achievement:'成就',bigmotor:'大运动',track:'追视追听',nail:'剪指甲',haircut:'理发',walk:'散步',medicine:'吃药',cough:'咳嗽',vomit:'呕吐',rash:'疹子',injury:'受伤',probiotic:'益生菌'};
 // ── 徽章图标（Piyo 风：彩底白图）──
 var BC={sleep:['#a99bd6',''],wake:['#7db8e8',''],feed_breast:['#f27ba3',''],feed_formula:['#f5a623',''],feed_bottle:['#d4b23c','dia'],feed_pump:['#e8c33e','dia'],feed_solid:['#7fbf6c',''],water:['#54b8e0',''],drink:['#54b8e0',''],snack:['#b07f5c',''],diaper_pee:['#3fb8af','sq'],diaper_poop:['#e0913c','sq'],vitamin:['#f2b41c',''],bath:['#57c7d4','dia'],walk:['#57a85c','dia'],walk_back:['#57a85c','dia'],temp:['#e05c5c',''],growth:['#6da84f','sq'],vaccine:['#8b78c9','sq'],hospital:['#8b78c9','sq'],medicine:['#d886c8',''],cough:['#8fb6d8',''],vomit:['#e0a23c',''],rash:['#e07a7a',''],injury:['#d86a5c',''],swim:['#3f9fd8',''],note:['#a9a29a','']};
 function glyph(pt,col){
@@ -234,7 +234,7 @@ function glyph(pt,col){
   default:return '<circle fill="#fff" cx="12" cy="12" r="4.5"/>';
  }}
 // 像素级 Piyo 原图标（icon/ 文件夹）；加载失败自动退回 SVG 徽章
-var PIC={sleep:'sleep',wake:'wake',feed_breast:'feed_breast',feed_formula:'feed_formula',feed_bottle:'feed_bottle',feed_pump:'feed_pump',feed_solid:'feed_solid',water:'water',drink:'drink',snack:'snack',meal:'meal',diaper_pee:'diaper_pee',diaper_poop:'diaper_poop',diaper_both:'diaper_both',vitamin:'vitamin',bath:'bath',walk:'walk',walk_back:'walk',temp:'temp',swim:'swim',growth:'growth_weight',vaccine:'vaccine',hospital:'hospital',medicine:'medicine',cough:'cough',vomit:'vomit',rash:'rash',injury:'injury',note:'note',nail:'nail',haircut:'haircut',achievement:'achievement',bigmotor:'achievement',track:'achievement',other:'other'};
+var PIC={sleep:'sleep',wake:'wake',feed_breast:'feed_breast',feed_formula:'feed_formula',feed_bottle:'feed_bottle',feed_pump:'feed_pump',feed_solid:'feed_solid',water:'water',drink:'drink',snack:'snack',meal:'meal',diaper_pee:'diaper_pee',diaper_poop:'diaper_poop',diaper_both:'diaper_both',vitamin:'vitamin',vitamin_ad:'vitamin_ad',probiotic:'probiotic',bath:'bath',walk:'walk',walk_back:'walk',temp:'temp',swim:'swim',growth:'growth_weight',vaccine:'vaccine',hospital:'hospital',medicine:'medicine',cough:'cough',vomit:'vomit',rash:'rash',injury:'injury',note:'note',nail:'nail',haircut:'haircut',achievement:'achievement',bigmotor:'achievement',track:'achievement',other:'other'};
 var ICONS_OK=false;
 (function(){var im=new Image();im.onload=function(){ICONS_OK=true;if(state.view==='rec'&&state.data)renderRec();else if(state.view==='sum'&&state.sum.data)renderSum()};im.src='icon/sleep.png'})();
 function badge(pt){
@@ -242,7 +242,7 @@ function badge(pt){
  var c=BC[pt]||['#b8b0a5',''];
  return '<span class="pic '+c[1]+'" style="background:'+c[0]+'"><svg viewBox="0 0 24 24">'+glyph(pt,c[0])+'</svg></span>'}
 // 摘要圆点色（与徽章同色系）
-var DOT={feed_breast:['#f27ba3',''],feed_formula:['#f5a623',''],feed_solid:['#8cc63e',''],feed_bottle:['#d4b23c',''],water:['#54b8e0',''],drink:['#54b8e0',''],snack:['#b07f5c',''],diaper_poop:['#e0913c','sq'],diaper_pee:['#3fb8af','sq'],vitamin:['#f2b41c','star'],bath:['#57c7d4','dia'],walk:['#57a85c','dia'],temp:['#e05c5c',''],growth:['#6da84f','sq'],vaccine:['#8b78c9','sq'],hospital:['#8b78c9','sq'],medicine:['#d886c8',''],cough:['#8fb6d8',''],vomit:['#e0a23c',''],rash:['#e07a7a',''],injury:['#d86a5c',''],swim:['#3f9fd8',''],note:['#bdbdbd','']};
+var DOT={feed_breast:['#f27ba3',''],feed_formula:['#f5a623',''],feed_solid:['#8cc63e',''],feed_bottle:['#d4b23c',''],water:['#54b8e0',''],drink:['#54b8e0',''],snack:['#b07f5c',''],diaper_poop:['#e0913c','sq'],diaper_pee:['#3fb8af','sq'],vitamin:['#f2b41c','star'],bath:['#57c7d4','dia'],walk:['#57a85c','dia'],temp:['#e05c5c',''],growth:['#6da84f','sq'],vaccine:['#8b78c9','sq'],hospital:['#8b78c9','sq'],medicine:['#d886c8',''],cough:['#8fb6d8',''],vomit:['#e0a23c',''],rash:['#e07a7a',''],injury:['#d86a5c',''],probiotic:['#6cbf84','star'],swim:['#3f9fd8',''],note:['#bdbdbd','']};
 
 function pad(n){return (n<10?'0':'')+n}
 function bj(ts){return new Date(new Date(ts).getTime()+8*3600e3)}
@@ -308,10 +308,12 @@ function buildNodes(rs){
       nodes.push({t:st,pt:'feed_formula',name:'配方奶',pink:formulaPink(d),quote:quote,rec:r,kind:'milk',delLabel:'配方奶 '+fmtT(st)});
     }else if(r.type==='feed_solid'){
       nodes.push({t:st,pt:'feed_solid',name:'辅食',pink:d.ml?d.ml+'ml':'',sub:d.food||'',quote:quote,rec:r,delLabel:'辅食 '+fmtT(st)});
-    }else if(r.type==='vitamin'){
-      var vn=d.note||d.name||'维生素';
-      var vpt=/AD/i.test(vn)?'vitamin_ad':(/益生菌/.test(vn)?'probiotic':'vitamin');
-      nodes.push({t:st,pt:vpt,name:vn,quote:quote,rec:r,delLabel:vn+' '+fmtT(st)});
+    }else if(r.type==='vitamin'||r.type==='probiotic'){
+      var vn=d.note||d.name||'';
+      var isPro=r.type==='probiotic'||/益生菌/.test(vn);
+      var vpt=isPro?'probiotic':(/AD/i.test(vn)?'vitamin_ad':'vitamin');
+      var vname=isPro?'益生菌':(/AD/i.test(vn)?'AD滴剂':(/D3/i.test(vn)?'维生素D3':'补剂'));
+      nodes.push({t:st,pt:vpt,name:vname,quote:quote,rec:r,delLabel:vname+' '+fmtT(st)});
     }else if(r.type==='achievement'||r.type==='bigmotor'||r.type==='track'){
       var mtitle=d.title||d.note||r.note||'';
       nodes.push({t:st,pt:r.type,name:r.type==='achievement'?'成就':(LABEL[r.type]||r.type),pink:mtitle,rec:r,delLabel:'成就 '+fmtT(st)+(mtitle?'（'+mtitle.slice(0,12)+'…）':'')});
@@ -425,7 +427,7 @@ function renderStat(){
 function gridH(){return Math.max(400, window.innerHeight - document.getElementById('hdr').offsetHeight - 168)}
 function sleepH(){return Math.max(340, window.innerHeight - document.getElementById('hdr').offsetHeight - 212)}
 function daySummaryHTML(rs,dateStr){
-  var bN=0,bL=0,bR=0,bMin=0,fN=0,fMl=0,sN=0,sMl=0,slMin=0,napMin=0,poop=0,pee=0,vit=0,bath=0,wt=null;
+  var bN=0,bL=0,bR=0,bMin=0,fN=0,fMl=0,sN=0,sMl=0,slMin=0,napMin=0,poop=0,pee=0,vit=0,pro=0,bath=0,wt=null;
   rs.forEach(function(r){
     if(r.type==='sleep'){var ov=sleepOverlapMin(r,dateStr);if(ov){slMin+=ov;if(isNapRec(r))napMin+=ov}return}
     if(bjDateStr(new Date(r.start_at).getTime())!==dateStr)return;
@@ -435,7 +437,7 @@ function daySummaryHTML(rs,dateStr){
     if(r.type==='feed_solid'){sN++;sMl+=(+d.ml||0)}
     if(r.type==='diaper_poop')poop++;
     if(r.type==='diaper_pee')pee++;
-    if(r.type==='vitamin')vit++;if(r.type==='bath')bath++;
+    if(r.type==='vitamin')vit++;if(r.type==='probiotic')pro++;if(r.type==='bath')bath++;
     if(r.type==='growth'&&d.weightKg)wt=d.weightKg;
   });
   var out=[];
@@ -446,7 +448,7 @@ function daySummaryHTML(rs,dateStr){
   if(slMin)out.push(mk('sleep',durTxt5(slMin),napMin?'小觉'+durTxt5(napMin):''));
   if(poop)out.push(mk('diaper_poop',poop+'次',''));
   if(pee)out.push(mk('diaper_pee',pee+'次',''));
-  if(vit)out.push(mk('vitamin',vit+'次',''));if(bath)out.push(mk('bath',bath+'次',''));
+  if(vit)out.push(mk('vitamin',vit+'次',''));if(pro)out.push(mk('probiotic',pro+'次',''));if(bath)out.push(mk('bath',bath+'次',''));
   if(wt)out.push(mk('growth',wt+'kg',''));
   return '<div class="sumwrap">'+(out.length?out.map(function(s){return '<span class="sumit">'+s+'</span>'}).join(''):'<span class="sumit" style="color:var(--sub)">这一天还没有记录</span>')+'</div>';
 }
@@ -680,7 +682,7 @@ function renderSum(){
     if(pop.style.display==='block'){pop.style.display='none';return}
     var present={};rs.forEach(function(r){if(r.type!=='sleep')present[r.type]=1});
     // 固定语义排序：进食 → 排泄 → 护理 → 医疗 → 成长/其他（同类相邻，顺序稳定）
-    var ORDER=['feed_breast','feed_formula','feed_bottle','feed_pump','feed_solid','snack','water','drink','diaper_poop','diaper_pee','diaper_both','bath','walk','vitamin','temp','medicine','hospital','vaccine','cough','vomit','rash','injury','growth','achievement','bigmotor','track','nail','haircut','note'];
+    var ORDER=['feed_breast','feed_formula','feed_bottle','feed_pump','feed_solid','snack','water','drink','diaper_poop','diaper_pee','diaper_both','bath','walk','vitamin','probiotic','temp','medicine','hospital','vaccine','cough','vomit','rash','injury','growth','achievement','bigmotor','track','nail','haircut','note'];
     var types=Object.keys(present).sort(function(a,b){
       var ia=ORDER.indexOf(a),ib=ORDER.indexOf(b);
       return (ia<0?999:ia)-(ib<0?999:ib)});
