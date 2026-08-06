@@ -1064,13 +1064,33 @@ function post(bodyObj,cb){
 }
 function afterEdit(){toast('已修改');closeSheet();loadRec();state.sum.data=null;state.mile.data=null;state.growth.data=null}
 function closeSheet(){document.getElementById('sheet').style.display='none';document.getElementById('sheetbg').style.display='none'}
+function gotoDate(ds){
+  state.date=ds;var p=ds.split('-');
+  document.getElementById('dlabel').textContent=p[0]+'年'+(+p[1])+'月'+(+p[2])+'日 周'+weekday(ds);
+  loadRec();
+}
+/* 时间与日期都可改：补录进错天的记录不用删了重记 */
 function editTime(rec){
   var st=new Date(rec.start_at).getTime();
-  var v=prompt('修改时间（HH:MM）',fmtT(st));if(!v)return;
-  var mm=v.match(/^(\d{1,2}):(\d{2})$/);if(!mm){toast('格式要像 08:20');return}
-  var ds=bjDateStr(st);var p=ds.split('-');
-  var utc=Date.UTC(+p[0],+p[1]-1,+p[2],+mm[1],+mm[2])-8*3600e3;
-  post({action:'update',id:rec.id,start_at:new Date(utc).toISOString()},afterEdit);
+  var oldDs=bjDateStr(st);
+  var v=prompt('修改日期时间\n只改时间：08:20\n改日期：2026-08-05 12:40 或 08-05 12:40',oldDs+' '+fmtT(st));
+  if(v===null)return;v=v.replace(/[：]/g,':').trim();if(!v)return;
+  var ds=oldDs,hh,mi,m;
+  if((m=v.match(/^(\d{1,2}):(\d{1,2})$/))){hh=+m[1];mi=+m[2]}
+  else if((m=v.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})[\sT]+(\d{1,2}):(\d{1,2})$/))){ds=m[1]+'-'+pad(+m[2])+'-'+pad(+m[3]);hh=+m[4];mi=+m[5]}
+  else if((m=v.match(/^(\d{1,2})[-\/.](\d{1,2})[\sT]+(\d{1,2}):(\d{1,2})$/))){ds=oldDs.slice(0,4)+'-'+pad(+m[1])+'-'+pad(+m[2]);hh=+m[3];mi=+m[4]}
+  else if((m=v.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/))){ds=m[1]+'-'+pad(+m[2])+'-'+pad(+m[3]);hh=bj(st).getUTCHours();mi=bj(st).getUTCMinutes()}
+  else{toast('格式要像 08:20 或 2026-08-05 12:40');return}
+  if(hh>23||mi>59){toast('时间超范围');return}
+  var p=ds.split('-');
+  if(+p[1]<1||+p[1]>12||+p[2]<1||+p[2]>31){toast('日期不对');return}
+  var utc=Date.UTC(+p[0],+p[1]-1,+p[2],hh,mi)-8*3600e3;
+  if(utc>Date.now()+3600e3&&!confirm('这个时间在未来，确定？'))return;
+  post({action:'update',id:rec.id,start_at:new Date(utc).toISOString()},function(){
+    closeSheet();state.sum.data=null;state.mile.data=null;state.growth.data=null;
+    if(ds===oldDs){toast('已修改');loadRec()}
+    else{toast('已移到 '+ds);gotoDate(ds)}
+  });
 }
 function editDetail(rec){
   var d=rec.data||{},t=rec.type,patch=null;
@@ -1088,8 +1108,9 @@ function editDetail(rec){
 }
 function openSheet(rec,label){
   var sh=document.getElementById('sheet');
-  sh.innerHTML='<div class="shhead">'+esc(label)+(rec.note?'<br>“'+esc(rec.note)+'”':'')+'</div>'+
-    '<button class="shbtn" id="shTime">修改时间</button>'+
+  var _rt=new Date(rec.start_at).getTime();
+  sh.innerHTML='<div class="shhead">'+esc(label)+'<br><span style="opacity:.55;font-size:.85em">'+bjDateStr(_rt)+' '+fmtT(_rt)+'</span>'+(rec.note?'<br>“'+esc(rec.note)+'”':'')+'</div>'+
+    '<button class="shbtn" id="shTime">修改日期时间</button>'+
     '<button class="shbtn" id="shDetail">修改内容</button>'+
     '<button class="shbtn danger" id="shDel">删除这条记录</button>'+
     '<button class="shbtn" id="shCancel">取消</button>';
