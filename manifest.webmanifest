@@ -1,7 +1,7 @@
 {
-  "name": "悠悠成长 · 宝宝日程与发育",
-  "short_name": "悠悠成长",
-  "start_url": ".",
+  "name": "Rootine · 宝宝日程与发育",
+  "short_name": "Rootine",
+  "start_url": "legacy.html",
   "scope": ".",
   "display": "standalone",
   "orientation": "portrait",
