@@ -158,6 +158,35 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .node[data-s="doing"]{border-color:#f2b41c;background:#fdf6e3}
 .node .np{font-size:10px;opacity:.7;padding-left:2px}
 .nn{width:100%;font-size:11px;color:var(--sub);margin-top:3px;text-wrap:pretty}
+/* 月龄页 */
+#ageview{display:none;padding:10px 10px 20px}
+.agehero{background:linear-gradient(135deg,#f687b0,#ee6fa0);color:#fff;border-radius:16px;padding:15px 17px;margin-bottom:12px;box-shadow:0 2px 8px rgba(238,111,160,.25)}
+.agehero .ah1{font-size:12px;opacity:.9;letter-spacing:.5px}
+.agehero .ah2{font-size:22px;font-weight:700;margin:3px 0 9px}
+.agehero .ah3{font-size:13.5px;line-height:1.75;text-wrap:pretty}
+.agehero .ah3 b{background:rgba(255,255,255,.22);border-radius:6px;padding:1px 6px;font-weight:600}
+.agesec{background:#fff;border-radius:16px;margin-bottom:9px;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden}
+.agesec>summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;align-items:center;gap:9px;font-size:16px;font-weight:600}
+.agesec>summary::-webkit-details-marker{display:none}
+.agesec>summary .ai{font-size:19px;flex:none}
+.agesec>summary .aw{flex:1;text-wrap:pretty}
+.agesec>summary .ac{font-size:13px;color:var(--sub);transition:transform .18s;flex:none}
+.agesec[open]>summary .ac{transform:rotate(90deg)}
+.agesec[open]>summary{border-bottom:1px solid var(--line)}
+.agebody{padding:12px 16px 15px}
+.agelead{font-size:14px;line-height:1.75;color:var(--ink);background:var(--pinklite);border-radius:11px;padding:10px 12px;margin-bottom:11px;text-wrap:pretty}
+.agelead b{color:var(--pink)}
+.ali{display:flex;gap:8px;font-size:13.5px;line-height:1.75;margin-bottom:9px;text-wrap:pretty}
+.ali:last-child{margin-bottom:0}
+.ali .am{flex:none;width:17px;text-align:center;padding-top:1px}
+.ali b{font-weight:600}
+.ali.yes .am{color:#3a9d6a}
+.ali.no .am{color:#d94f7a}
+.ayo{margin-top:11px;border-left:3px solid #f2b41c;background:#fffbf0;border-radius:0 10px 10px 0;padding:9px 12px;font-size:12.5px;line-height:1.7;color:#7a6224;text-wrap:pretty}
+.ayo em{font-style:normal;font-weight:700;color:#a8791f}
+.agered{background:#fff;border:2px solid #f4c4d4;border-radius:16px;padding:14px 16px;margin-bottom:9px}
+.agered .art{font-size:15.5px;font-weight:700;color:var(--pink);margin-bottom:9px}
+.agesrc{font-size:11px;color:var(--sub);line-height:1.75;padding:4px 6px 0;text-wrap:pretty}
 </style></head><body>
 
 <div id="hdr">
@@ -188,6 +217,7 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
   <div id="tl"></div>
   <div id="sumview"></div>
   <div id="skillview"></div>
+  <div id="ageview"></div>
 </div>
 
 <div id="tabbar">
@@ -195,6 +225,7 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
   <button class="tab" data-tab="rec">记录</button>
   <button class="tab" data-tab="sum">摘要</button>
   <button class="tab" data-tab="skill">技能</button>
+  <button class="tab" data-tab="age">月龄</button>
 </div>
 <div id="toast"></div>
 <div id="sheetbg"></div><div id="sheet"></div>
@@ -1006,6 +1037,199 @@ document.getElementById('skillview').addEventListener('click',function(e){
   state.skill.dim=b.getAttribute('data-dim');renderSkillView();
 },true);
 
+/* ═══ 月龄页（本月龄注意事项） ═══ */
+/* 内容按月龄段整段替换：每月请 Claude 读书+查权威源重新生成一版，改这一个对象即可。
+   band/sub 是抬头，top 是本月三件事，secs 是九个主题，red 是就医红线。
+   每条 you 是「悠悠现在的实际情况」，来自 2026-08-10 那次数据体检，换月龄时要一起更新。*/
+var AGE_GUIDE={
+ band:'12 月龄',
+ sub:'适用 11–13 个月 · 2026-08-10 编',
+ top:[
+  '把<b>红肉和肝脏</b>加回辅食轮换——这个月龄铁需求最高',
+  '补上<b>手足口第二针</b>，约<b>13 价加强针</b>（满周岁就能打）',
+  '走路只伸<b>一根手指</b>让她带路，<b>不要举双手牵</b>，不要学步车'
+ ],
+ secs:[
+ {icon:'🤸',title:'大运动与精细运动里程碑',
+  lead:'满 1 岁时，<b>75% 的孩子</b>能做到下面这些。做不到不等于「晚一点」，是已经落在后四分之一，值得跟医生提一句。',
+  items:[
+   ['yes','<b>扶物站起来</b>、<b>扶着家具走</b>'],
+   ['yes','<b>拇指 + 食指</b>捏起小东西（比如一粒米饭）'],
+   ['yes','你端着<b>无盖杯子</b>时能就着喝'],
+   ['yes','<b>把东西放进容器</b>里，比如积木放进杯子'],
+   ['yes','<b>找你当着她面藏起来的东西</b>，比如毯子下的玩具'],
+   ['dot','精细动作的顺序是：9 个月拇指食指捏 → 10 个月指尖精准捏 + 开始扔 → 12 个月大物体能平顺放手'],
+   ['dot','<b>「独走」不在 12 月龄清单里，在 15 月龄清单里。</b>']
+  ],
+  you:'悠悠 4/5 扶站、5/3 扶走（比清单早三个半月）、7/20 第一次独站几秒。十条里八条有据，只有<em>放进容器</em>和<em>找藏起来的东西</em>还没试过——这两条这周可以玩一下。'},
+
+ {icon:'🚶',title:'学步',
+  lead:'走路的正常范围<b>极宽</b>：可能 9 个月就到，也可能接近 16 个月甚至更晚。真正需要评估的红线是<b>18 个月还不会独走</b>。',
+  items:[
+   ['no','<b>不要举着两只手牵她走。</b>那是大人在替她承重，把她放进身体还没准备好的姿势里——书里的比喻是芭蕾舞者过早穿足尖鞋'],
+   ['yes','要扶就<b>伸一根手指让她带路</b>。她带不动，说明还没到时候'],
+   ['no','<b>不用学步车。</b>它压迫髋部；而且活动范围一下变大，是烫伤的高危因素'],
+   ['yes','推的东西可以：小推车、空纸箱。刚会走时往里<b>压两本厚书</b>让它慢一点'],
+   ['yes','刚学步<b>赤脚最好</b>。要穿鞋选软帮、鞋底摩擦力大'],
+   ['yes','试鞋：脚趾顶到前头、后跟能插进大人<b>一根手指</b>。这个月龄脚长得快，<b>约 2 个月换一双</b>'],
+   ['dot','<b>习惯手是左手不要纠正。</b>强行纠正的代价是左脑负担过重、口吃、语音不清、阅读困难'],
+   ['dot','扶走的三个阶段：双手扶物横走 → 双手推物前行 → 单手扶物前行']
+  ],
+  you:'悠悠在第一阶段（扶物横走），顺序完全对。7 月三次生病，学步停滞是必然的。<em>一点都不用急。</em>'},
+
+ {icon:'🤕',title:'摔跤怎么办',
+  lead:'她一定会摔。<b>你的反应对她的影响，往往大于摔这件事本身。</b>',
+  items:[
+   ['no','不要跟在后面接她、不要拦下每一次摔'],
+   ['no','不要惊呼、不要一脸惊恐、不要冲过去'],
+   ['yes','把环境铺好：常玩的地方铺<b>厚地毯</b>，家具装防撞角'],
+   ['dot','孩子摔第二三次之后就会<b>学会护住头</b>——这是能带一辈子的技能'],
+   ['dot','不拦每一次摔，她才能学会评估风险、知道自己身体的边界']
+  ],
+  you:''},
+
+ {icon:'🍚',title:'辅食与断奶',
+  lead:'<b>1 岁半以前，奶仍然是主食。</b>奶是高密度高热量食物，米粥面条是低密度食物——辅食占比一高，会挤掉奶量、拉低全天总热量。',
+  items:[
+   ['dot','奶量：<b>1–1.5 岁每天不少于 400–600ml</b>（6–12 个月是 600–800ml）'],
+   ['dot','辅食顿数：<b>11–18 个月每天 3 顿以上</b>，质地「软烂」，主要靠牙齿咀嚼'],
+   ['yes','<b>每周红肉 2–3 次 + 肝脏 1 次。</b>12 月龄是铁需求高峰：胎里带的铁储备 4–6 个月就耗尽，之后全靠吃'],
+   ['no','<b>鸡蛋不算补铁。</b>蛋黄含铁，但被卵黄高磷蛋白抑制吸收，别拿它当铁来源'],
+   ['no','<b>1 岁之内不主动加盐。</b>'],
+   ['no','不需要果汁。真要给，100% 果汁每天不超过 120ml，不给含糖饮料和调味奶'],
+   ['yes','加新食物<b>一次一种、每种观察 3 天</b>，有反应立刻停并记下来'],
+   ['dot','判断辅食加得好不好，<b>看生长曲线，不看「吃饱没有」</b>'],
+   ['dot','断奶：WHO 的立场是不规定时间。<b>先断夜奶、再断临睡前的奶</b>；断奶期要比平时<b>更多</b>拥抱和陪伴'],
+   ['no','断奶<b>绝对不要</b>母子隔离，<b>绝对不要</b>在乳头涂辣椒水墨汁之类。会造成夜惊、拒食、缺乏安全感']
+  ],
+  you:'悠悠奶量达标（配方奶 330ml 中位 + 亲喂 2–6 次）。辅食稳定 2 顿，比教材建议少一顿。近 21 天辅食几乎全是面/粥/馒头 + 鸡蛋 + 蔬菜，<em>动物性铁来源只有 7/23 一次鹅肝</em>——这是现在最该补的一件事。红肉打成泥拌进现在的面里最省事。'},
+
+ {icon:'😴',title:'睡眠',
+  lead:'<b>一岁并不是「基本都能自主入睡」。</b>研究显示 12 月龄仍有<b>约一半</b>的孩子夜醒后需要大人介入才能重新入睡；每晚醒 1–3 次是常态。还要抱哄，是一半孩子的现状，不是掉队。',
+  items:[
+   ['dot','这个月龄每天需要<b>12–16 小时</b>（含小睡）。作息固定会容易得多'],
+   ['dot','白天小睡这个月龄典型是<b>2 次、共 2–3 小时</b>。白天睡满 4 小时，夜里的睡眠压力就不够撑到天亮'],
+   ['yes','困倦信号（手脚抽动、揉眼、打哈欠）出现就启动<b>短仪式</b>：预告 → 换尿布 → 一首歌或一本短书 → 放下'],
+   ['yes','这个月龄已经听得懂话，可以<b>提前预告</b>：「我们把玩具收起来，要睡觉了」'],
+   ['dot','抱睡着的孩子，半夜浅睡交界醒来时，找的还是「被抱着」这个条件——这叫<b>入睡联想</b>'],
+   ['yes','想改的话最省力的一步是<b>压小睡</b>，不是硬改哄睡：下午那觉不超过 1.5 小时，且不晚于 15:30 结束'],
+   ['yes','再进一步是把「放下」提前一点点——在她<b>将睡未睡</b>时放下，最后 5% 由她自己完成。可以极慢推进，不需要哭声控制']
+  ],
+  you:'悠悠总睡眠中位 13.7 小时（标准 12–16，达标偏上），小睡 2 次共 3.7 小时（偏多）。夜觉近 21 晚有 19 晚分成 2–3 段，典型是 20:15 睡 → 00:40 醒 → <em>醒着约 1 小时</em> → 01:40 再睡到 7:00。不是睡不够，是被切成两块。<em>数据里没有一条支持「必须干预」。</em>'},
+
+ {icon:'✋',title:'打人、扔东西、咬人',
+  lead:'<b>9 到 12 个月</b>开始出现，是她在表达强烈偏好。这不是「调皮」，是沟通能力还不够。先理解 → 再翻译 → 再温和而明确地设界。',
+  items:[
+   ['dot','打你 = 不喜欢现在发生的事？东西被拿走了？抱的姿势不舒服？'],
+   ['dot','扔东西 = 玩具太难或太简单？在试因果关系？'],
+   ['dot','咬人 = 饿了？出牙？'],
+   ['dot','推人 = 想过去？想玩那个玩具？'],
+   ['yes','先猜出来说给她听：<b>「你是不是在告诉我……？」</b>'],
+   ['yes','再设界：<b>「我不会让你伤到自己 / 别人。」</b>必要时抱离现场，陪她到平静，平静之后再连接'],
+   ['yes','少说「不」——省给真正危险的事，说的时候要坚定。多说<b>该怎么做</b>：不说「不许扔」，说<b>「食物待在盘子里，或者进嘴巴里」</b>'],
+   ['dot','关于扔：CDC 的 12 月龄清单里<b>没有</b>「扔东西」。它考的是同一个能力的更高版本——<b>把东西放进容器</b>（在指定位置有意识松手）'],
+   ['yes','所以练法是：<b>给她罐子和小东西往里装</b>，改变罐口大小调难度。别让她表演扔，让她往里放']
+  ],
+  you:'悠悠现在是「无意识会扔出去，但有意识让她扔不一定做到」——说明有意识松手已经有了、还不精准。Montessori 把「大物体平顺放手」标在 12 个月，<em>正好是现在，不是缺陷</em>。'},
+
+ {icon:'🫂',title:'分离焦虑',
+  lead:'<b>6 到 16 个月</b>是分离焦虑的窗口期，现在正在里面。她还在学「你走开了会回来」这件事。',
+  items:[
+   ['yes','走开时<b>出声报备</b>：「我去厨房了」→ 在厨房再喊一声「我在厨房」→ 回来说「我从厨房回来了」'],
+   ['yes','自己先别焦虑——<b>她会读你的情绪</b>。你越犹豫，她黏得越紧'],
+   ['yes','引入新看护人：先请对方<b>在你在场时</b>来家里熟悉 → 你去别的房间 → 再逐步拉长外出时间'],
+   ['yes','保持其他参照物稳定：房间秩序、日常节奏、食物'],
+   ['yes','去新环境时先让她坐在你两腿之间，等她<b>自己愿意</b>爬开去探索'],
+   ['yes','留一件有你气味的东西'],
+   ['dot','如果她黏人不肯下地：先检查自己是不是障碍——是不是一直在逗她玩？逐步从「逗她玩」过渡到「陪着」，再到「跟着她走」；从贴身躺着，到挪开 10 公分，到去厨房烧水（先告诉她去哪）']
+  ],
+  you:''},
+
+ {icon:'📱',title:'屏幕与环境',
+  lead:'<b>2 岁以下不建议任何屏幕时间</b>，视频通话除外。也要注意大人自己在她面前用手机。',
+  items:[
+   ['yes','她在外面无聊了：抱她去看窗外的车和人，随身带个小袋子装几样她喜欢的东西'],
+   ['yes','她不高兴时用<b>怀抱、安抚的话和耐心</b>，不要用屏幕转移'],
+   ['dot','环境的思路不是拦，是改——<b>把家改成「可以」的空间</b>'],
+   ['yes','化学品药品<b>上锁</b>；玻璃器皿挪高层；安全的餐具挪到低抽屉<b>让她玩</b>'],
+   ['yes','低矮稳固的家具让她扶站横走；有楼梯就在看护下让她爬（上去她自己会，<b>下来需要你示范</b>）'],
+   ['no','<b>不要铺桌布。</b>会爬的孩子一拽，桌上的热汤就下来了'],
+   ['yes','洗澡<b>先放冷水再放热水</b>；楼梯<b>两头</b>都装安全门；不在窗前摆沙发'],
+   ['dot','烫伤急救：<b>先冲水冷却 15–20 分钟</b>（隔着衣服烫就别硬脱，连衣服一起浇）→ 不涂植物油芦荟酱油牙膏 → 不弄破水泡 → 面积大或起泡的冷却后立刻送医'],
+   ['yes','装饰用<b>真实的图片</b>（动物、自然、熟悉的人）。这个年纪还想象不了不在眼前的东西']
+  ],
+  you:''},
+
+ {icon:'💬',title:'语言、动作与认知',
+  lead:'这个阶段语言吸收力最强。书里的原话是：<b>talk talk talk，sing sing sing，read read read。</b>',
+  items:[
+   ['dot','第一个词的正常范围<b>极宽：5 到 36 个月</b>，平均 11.5 个月'],
+   ['dot','<b>走路和说话会互相让路</b>——学步猛进时语言常有平台期，反之亦然。这是神经资源分配，不是退步'],
+   ['yes','会走之后手空出来了，<b>把她编进家务</b>：做饭、擦桌子、摆餐具、收拾买回来的菜——每一样都自带一整套词汇'],
+   ['yes','她指什么就<b>用话回应</b>：「你要杯子？给你杯子，这是你的杯子」'],
+   ['yes','读<b>硬皮书，控制在 5 页以内</b>。她能专注看图 1–2 分钟就是真正意义的阅读开始了'],
+   ['yes','押韵的三字儿歌，<b>每周一首</b>'],
+   ['yes','<b>蹲下到她的高度</b>说话，或者把她抱到你的高度'],
+   ['dot','认知可以练：指认身体部位（从手开始，由上到下）· 实物与图片配对 · 当着她面藏玩具让她找 · 下雨打伞出去接雨点'],
+   ['yes','给她小勺舀东西、小棍够远处的球——<b>第一次成功时要给非常明显的赞赏</b>'],
+   ['yes','爬楼梯边爬边数 1、2、3；快满周岁时练<b>竖食指表示「1」</b>'],
+   ['dot','双语：一人一语，或按场景分。想让她真正掌握的语言，每周暴露量要占<b>三成左右</b>']
+  ],
+  you:'悠悠 3/8 会叫爸爸妈妈、1/18 会招手、6/25 能听名取物——语言线走得很稳。'},
+
+ {icon:'🥄',title:'生活自理',
+  lead:'这个月龄开始，很多事可以<b>让她自己做</b>，做不好也让她做。',
+  items:[
+   ['yes','<b>用碗喝水</b>：先喝大人碗里的，再到自己捧碗'],
+   ['yes','<b>自己盖瓶盖</b>：选圆的、轻的塑料盖'],
+   ['yes','<b>配合洗手洗脚</b>：语言指令简单清晰，配合完成之后立刻肯定'],
+   ['yes','<b>独立玩</b>：提供合适的桌椅，<b>一次只给一种玩具</b>，玩完示范放回原处'],
+   ['yes','让她自己用手抓东西吃，用杯子喝一点点水。<b>会洒，洒是学习的一部分</b>'],
+   ['dot','白天小睡可以固定到每天 2 次，睡前不要过度兴奋'],
+   ['dot','<b>12 个月左右有些孩子会对坐便器感兴趣</b>，换尿布时可以顺手提供；没兴趣就等——跟着孩子走'],
+   ['dot','出牙了就开始用<b>软布或软牙刷加清水</b>清洁']
+  ],
+  you:'悠悠 8/5 第一次用敞口杯、8/9 第一次吃大人米饭——质地和自理都在往前走。'}
+ ],
+ red:{title:'🚩 什么时候该找医生',
+  items:[
+   '满一岁时，上面<b>大运动与精细运动</b>那一节里有任何一条做不到',
+   '<b>曾经会、后来不会了</b>（技能倒退）——这条最重要',
+   '你自己有任何说不清的担心',
+   '<b>18 个月还不会独走</b>',
+   '看医生时准备好：你们平时一起做什么、她喜欢做什么、有没有早产史或特殊健康需要',
+   '你最了解你的孩子。<b>别停在「再等等看」</b>，可以直接要求做发育筛查'
+  ]},
+ src:'来源：CDC《Learn the Signs. Act Early.》12 月龄里程碑（2022 改版，标准为「75% 的孩子能做到」）· The Montessori Baby（Davies & Uzodike）· 0-3 岁婴幼儿的保育与教育（张永红、赖莎莉）· 国家免疫规划疫苗儿童免疫程序（2026 年版）。「悠悠现在」各条来自 2026-08-10 的数据体检。'
+};
+function renderAgeView(){
+  document.getElementById('dlabel').textContent='📖 '+AGE_GUIDE.band+' 注意事项';
+  document.getElementById('babyline').textContent='🌱 悠悠'+(BIRTH?' · '+weekAge(todayStr()):'');
+  document.getElementById('todayBtn').style.display='none';
+  document.getElementById('sumbar').innerHTML='';
+  document.getElementById('fresh').innerHTML=esc(AGE_GUIDE.sub)+' · 点标题展开';
+  var h='<div class="agehero"><div class="ah1">'+esc(AGE_GUIDE.sub)+'</div>'
+      +'<div class="ah2">本月最要紧的三件事</div><div class="ah3">';
+  AGE_GUIDE.top.forEach(function(t,i){h+=(i?'<br>':'')+(i+1)+'. '+t});
+  h+='</div></div>';
+  AGE_GUIDE.secs.forEach(function(s,i){
+    h+='<details class="agesec"'+(i===0?' open':'')+'><summary><span class="ai">'+s.icon+'</span>'
+      +'<span class="aw">'+esc(s.title)+'</span><span class="ac">›</span></summary><div class="agebody">'
+      +'<div class="agelead">'+s.lead+'</div>';
+    s.items.forEach(function(it){
+      var m=it[0]==='yes'?'✓':it[0]==='no'?'✕':'·';
+      h+='<div class="ali '+it[0]+'"><span class="am">'+m+'</span><span>'+it[1]+'</span></div>';
+    });
+    if(s.you)h+='<div class="ayo">👶 <b>悠悠现在</b>：'+s.you+'</div>';
+    h+='</div></details>';
+  });
+  h+='<div class="agered"><div class="art">'+esc(AGE_GUIDE.red.title)+'</div>';
+  AGE_GUIDE.red.items.forEach(function(t){h+='<div class="ali dot"><span class="am">·</span><span>'+t+'</span></div>'});
+  h+='</div><div class="agesrc">'+esc(AGE_GUIDE.src)+'</div>';
+  document.getElementById('ageview').innerHTML=h;
+  fixPad();
+}
+
 /* ═══ 加载与切换 ═══ */
 function loadRec(tryN){
   tryN=(typeof tryN==='number')?tryN:1;
@@ -1157,10 +1381,11 @@ function switchView(vw){
   document.getElementById('tl').style.display=(vw==='rec')?'block':'none';
   document.getElementById('sumview').style.display=(vw==='sum')?'block':'none';
   document.getElementById('skillview').style.display=(vw==='skill')?'block':'none';
+  document.getElementById('ageview').style.display=(vw==='age')?'block':'none';
   document.getElementById('subtabs').style.display=(vw==='sum')?'flex':'none';
   document.getElementById('sumbar').style.display=(vw==='rec')?'block':'none';
   document.getElementById('dpick').style.pointerEvents=(vw==='rec')?'auto':'none';
-  var hideArrows=(vw==='stat'||vw==='skill');
+  var hideArrows=(vw==='stat'||vw==='skill'||vw==='age');
   document.getElementById('prevD').style.visibility=hideArrows?'hidden':'visible';
   document.getElementById('nextD').style.visibility=hideArrows?'hidden':'visible';
   document.getElementById('searchBtn').style.display=(vw==='rec')?'block':'none';
@@ -1168,6 +1393,7 @@ function switchView(vw){
   if(vw==='rec'){if(state.data)renderRec();else loadRec()}
   if(vw==='sum'){if(!state.sum.from)state.sum.from=mondayOf(todayStr());if(state.sum.data)renderSum();else loadSum()}
   if(vw==='skill'){if(state.skill.data)renderSkillView();loadSkills()}
+  if(vw==='age'){renderAgeView()}
   fixPad();
 }
 document.getElementById('prevD').onclick=function(){
