@@ -46,8 +46,9 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .card .cv{font-size:19px;font-weight:600;line-height:1.4;text-wrap:pretty}
 .card .cv b{color:var(--pink)}
 .card .cs{font-size:12.5px;color:var(--sub);margin-top:5px;line-height:1.6;text-wrap:pretty}
-#subtabs{background:var(--pinkbg);display:none;padding:0 10px}
-.stab{border:none;background:none;color:rgba(255,255,255,.85);font-size:14px;font-weight:600;padding:7px 14px;border-radius:10px 10px 0 0}
+#subtabs{background:var(--pinkbg);display:none;padding:0 8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+#subtabs::-webkit-scrollbar{display:none}
+.stab{border:none;background:none;color:rgba(255,255,255,.85);font-size:14px;font-weight:600;padding:7px 12px;border-radius:10px 10px 0 0;white-space:nowrap;flex:none}
 .stab.on{background:#fff;color:var(--pink)}
 #fresh{background:#fff;padding:2px 12px 6px;font-size:10.5px;color:var(--sub);line-height:1.5;text-wrap:pretty}
 #fresh .stale{color:#c07a2d;font-weight:600}
@@ -180,13 +181,42 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .ali:last-child{margin-bottom:0}
 .ali .am{flex:none;width:17px;text-align:center;padding-top:1px}
 .ali b{font-weight:600}
-.ali.yes .am{color:#3a9d6a}
-.ali.no .am{color:#d94f7a}
+/* ⚠️ 标记类必须带 a- 前缀：裸的 .dot 是周视图那些 position:absolute 的小圆点，撞上会把整段文字掀翻 */
+.ali.a-yes .am{color:#3a9d6a}
+.ali.a-no .am{color:#d94f7a}
 .ayo{margin-top:11px;border-left:3px solid #f2b41c;background:#fffbf0;border-radius:0 10px 10px 0;padding:9px 12px;font-size:12.5px;line-height:1.7;color:#7a6224;text-wrap:pretty}
 .ayo em{font-style:normal;font-weight:700;color:#a8791f}
 .agered{background:#fff;border:2px solid #f4c4d4;border-radius:16px;padding:14px 16px;margin-bottom:9px}
 .agered .art{font-size:15.5px;font-weight:700;color:var(--pink);margin-bottom:9px}
 .agesrc{font-size:11px;color:var(--sub);line-height:1.75;padding:4px 6px 0;text-wrap:pretty}
+/* 疫苗页 */
+.vgrp{margin-bottom:12px}
+.vgh{font-size:12.5px;color:var(--sub);font-weight:600;margin:0 4px 6px;display:flex;align-items:center;gap:6px}
+.vgh .n{background:var(--line);color:var(--sub);border-radius:99px;padding:1px 8px;font-size:11px}
+.vc{background:#fff;border-radius:14px;padding:11px 14px;margin-bottom:7px;box-shadow:0 1px 2px rgba(0,0,0,.04);border-left:4px solid var(--line)}
+.vc.late{border-left-color:#d94f7a;background:#fff6f8}
+.vc.due{border-left-color:#f2b41c;background:#fffbf0}
+.vc.done{border-left-color:#3a9d6a}
+.vc.later{opacity:.72}
+.vct{font-size:14.5px;font-weight:600;display:flex;align-items:baseline;gap:7px;text-wrap:pretty}
+.vct .dz{font-size:11.5px;color:var(--sub);font-weight:600;flex:none}
+.vcs{font-size:12px;color:var(--sub);margin-top:4px;line-height:1.65;text-wrap:pretty}
+.vcs b{color:var(--ink)}
+.vcs .warn{color:#c2436a;font-weight:600}
+.vcs .ok{color:#3a9d6a;font-weight:600}
+.vtag{font-size:10px;border-radius:99px;padding:1px 7px;font-weight:600;flex:none}
+.vtag.nip{background:#e8f3ec;color:#3a7d5c}
+.vtag.npv{background:#eef1f8;color:#5a6b93}
+/* 成长曲线数据表 */
+.gtab{background:#fff;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden;font-variant-numeric:tabular-nums}
+.gtr{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:13px}
+.gtr:last-child{border-bottom:none}
+.gtr.hd{background:#faf8f6;font-size:11px;color:var(--sub);font-weight:600;position:sticky;top:0}
+.gtr .c1{width:64px;flex:none}
+.gtr .c2{width:44px;flex:none;color:var(--sub);font-size:11.5px}
+.gtr .c3{width:62px;flex:none;font-weight:600}
+.gtr .c4{width:20px;flex:none;text-align:center}
+.gtr .c5{flex:1;color:var(--sub);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style></head><body>
 
 <div id="hdr">
@@ -203,6 +233,7 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
     <button class="stab" data-st="sleep">睡眠</button>
     <button class="stab" data-st="grow">成长曲线</button>
     <button class="stab" data-st="mile">大事记</button>
+    <button class="stab" data-st="vax">疫苗</button>
     <button class="stab on" data-st="all">ALL</button>
   </div>
   <div id="sumbar"></div>
@@ -236,7 +267,7 @@ var API_BASE='https://jddtovlvntdglfuezxdq.supabase.co/functions/v1/board';
 var BIRTH=null;
 var state={view:'rec',date:null,data:null,
   sum:{from:null,data:null,sub:'all',feedMode:'amount',showSleep:true,hidden:{}},
-  growth:{data:null,mode:'wh',range:12},mile:{data:null}};
+  growth:{data:null,mode:'wh',range:12,view:'chart'},mile:{data:null},vax:{data:null}};
 // WHO(2006) 女宝参考带（0–24月，近似 ±2SD）
 var WHO={
  wt:{lo:[2.4,3.2,3.9,4.5,5.0,5.4,5.7,6.0,6.3,6.5,6.7,6.9,7.0,7.2,7.4,7.6,7.7,7.9,8.1,8.2,8.4,8.6,8.7,8.9,9.0],
@@ -660,6 +691,10 @@ function renderSum(){
     if(!state.growth.data){h+='<div class="empty">加载成长数据…</div>';loadGrowth()}
     else h+=growHTML();
   }
+  if(sub==='vax'){
+    if(!state.vax.data){h+='<div class="empty">加载疫苗计划…</div>';loadVax()}
+    else h+=vaxHTML();
+  }
   if(sub==='mile'){
     if(!state.mile.data){h+='<div class="empty">翻开大事记…</div>';loadMile()}
     else{h+=mileHTML();if(Date.now()-(state.mile.at||0)>30e3)loadMile()} // 每次进页先显缓存、后台刷新（语音新记的成就不再漏）
@@ -740,6 +775,7 @@ function renderSum(){
   document.querySelectorAll('.seg2 button[data-sm]').forEach(function(b){b.onclick=function(){state.sum.sleepMode=b.getAttribute('data-sm');renderSum()}});
   document.querySelectorAll('.seg2 button[data-gm]').forEach(function(b){b.onclick=function(){state.growth.mode=b.getAttribute('data-gm');renderSum()}});
   document.querySelectorAll('.seg2 button[data-gr]').forEach(function(b){b.onclick=function(){state.growth.range=+b.getAttribute('data-gr');renderSum()}});
+  document.querySelectorAll('.seg2 button[data-gv]').forEach(function(b){b.onclick=function(){state.growth.view=b.getAttribute('data-gv');renderSum()}});
   fixPad();
 }
 /* ═══ 大事记（摘要二级）═══ */
@@ -836,19 +872,122 @@ function loadGrowth(){
   }).catch(function(){showErr('网络不通')});
 }
 function ageM(ms){return (ms-ymdUtc(BIRTH))/86400e3/30.4375}
+
+/* ═══ 疫苗计划（摘要 · 疫苗子页） ═══
+   数据来自 Supabase vaccine_plan 表 + records 里 type=vaccine 且 data.vax=[{code,dose}] 的记录。
+   要加疫苗、改程序，改表就行，不用动这里、也不用发版。 */
+function loadVax(){
+  fetch(API_BASE+'?vaccines=1&token='+encodeURIComponent(TOKEN))
+  .then(function(r){return r.json()}).then(function(d){
+    if(d.ok===false){showErr(d.msg||'加载失败');return}
+    state.vax.data=d;if(state.view==='sum'&&state.sum.sub==='vax')renderSum();
+  }).catch(function(){showErr('网络不通')});
+}
+function dDiff(a,b){return Math.round((ymdUtc(b)-ymdUtc(a))/86400e3)}
+function addDays(ds,n){return bjDateStr(ymdUtc(ds)+n*86400e3)}
+function monthToDate(m){return bjDateStr(ymdUtc(BIRTH)+Math.round(m*30.4375)*86400e3)}
+function vaxHTML(){
+  var vd=state.vax.data;BIRTH=(vd.baby&&vd.baby.birth)||BIRTH;
+  var today=todayStr(),curM=(ymdUtc(today)-ymdUtc(BIRTH))/86400e3/30.4375;
+  // 已种：code_dose -> 日期
+  var done={},extra=[];
+  (vd.shots||[]).forEach(function(s){
+    var ds=bjDateStr(new Date(s.start_at).getTime());
+    var arr=(s.data||{}).vax;
+    if(arr&&arr.length)arr.forEach(function(v){done[v.code+'_'+v.dose]=ds});
+    else extra.push({d:ds,t:s.note||(s.data||{}).note||'未标注疫苗'});
+  });
+  var GRP={late:[],due:[],later:[],done:[]};
+  (vd.plan||[]).forEach(function(p){
+    var key=p.code+'_'+p.dose_no,prev=p.dose_no>1?done[p.code+'_'+(p.dose_no-1)]:null;
+    var st,why='';
+    if(done[key]){st='done'}
+    else if(p.due_month_max!=null&&curM>+p.due_month_max){st='late';why='应种窗口 '+p.due_month_min+'–'+p.due_month_max+' 月龄已过'}
+    else if(p.interval_max_days!=null&&prev&&dDiff(prev,today)>p.interval_max_days){st='late';why='距上一剂已 '+dDiff(prev,today)+' 天，程序建议 ≤'+p.interval_max_days+' 天'}
+    else if(p.interval_from_prev_days!=null&&prev&&curM>=+p.due_month_min&&dDiff(prev,today)>p.interval_from_prev_days+30){st='late';why='距上一剂已 '+dDiff(prev,today)+' 天，间隔要求 '+p.interval_from_prev_days+' 天'}
+    else if(curM>=+p.due_month_min&&(p.dose_no===1||prev)){st='due';why='已进入应种窗口'}
+    else{st='later';
+      var d1=monthToDate(+p.due_month_min);
+      if(prev&&p.interval_from_prev_days)var d2=addDays(prev,p.interval_from_prev_days);
+      var dd=(d2&&ymdUtc(d2)>ymdUtc(d1))?d2:d1;
+      why=(p.dose_no>1&&!prev)?'等上一剂':'预计 '+mdLabel(dd)+' 起可约';
+    }
+    GRP[st].push({p:p,st:st,why:why,on:done[key]||null,prev:prev});
+  });
+  var TITLE={late:['⚠️ 逾期 / 待补录','#c2436a'],due:['🟡 现在可以约','#a8791f'],later:['⏳ 之后','#9a938a'],done:['✅ 已完成','#3a9d6a']};
+  var h='';
+  ['late','due','later','done'].forEach(function(k){
+    var list=GRP[k];if(!list.length)return;
+    if(k==='done')list.sort(function(a,b){return a.on<b.on?1:-1});
+    h+='<div class="vgrp"><div class="vgh" style="color:'+TITLE[k][1]+'">'+TITLE[k][0]+'<span class="n">'+list.length+'</span></div>';
+    list.forEach(function(it){
+      var p=it.p;
+      h+='<div class="vc '+it.st+'"><div class="vct"><span>'+esc(p.name)+'</span>'
+        +'<span class="dz">第 '+p.dose_no+' 剂</span>'
+        +'<span class="vtag '+p.category+'">'+(p.category==='nip'?'免费':'自费')+'</span></div>';
+      var s2='';
+      if(it.on)s2='<span class="ok">'+it.on+'</span> 接种';
+      else if(it.st==='late')s2='<span class="warn">'+it.why+'</span>';
+      else s2=it.why;
+      if(it.prev&&!it.on)s2+='　·　上一剂 '+it.prev;
+      if(p.note)s2+='<br>'+esc(p.note);
+      h+='<div class="vcs">'+s2+'</div></div>';
+    });
+    h+='</div>';
+  });
+  if(extra.length){
+    h+='<div class="vgrp"><div class="vgh">📋 已记录但未挂进计划<span class="n">'+extra.length+'</span></div>';
+    extra.forEach(function(e){h+='<div class="vc done"><div class="vct"><span>'+esc(e.t)+'</span></div><div class="vcs"><span class="ok">'+e.d+'</span> 接种</div></div>'});
+    h+='</div>';
+  }
+  h+='<div class="agesrc">计划表存在 Supabase <b>vaccine_plan</b>，要加疫苗或改程序改表即可，不用发版。'
+    +'一切以本地接种门诊和接种本为准；程序会随各地政策和说明书更新。</div>';
+  return h;
+}
+// 测量地点：家里的秤和接种点/儿保的秤不是同一台，点要能一眼分开（clinic 用橙色）
+var PLACE={home:{c:'#5c9a4a',n:'在家测'},clinic:{c:'#d98032',n:'儿保 / 接种点'}};
+function placeOf(d){return (d&&d.place==='clinic')?'clinic':'home'}
 function growHTML(){
   var g=state.growth,recs=(g.data.growth||[]);
   BIRTH=(g.data.baby&&g.data.baby.birth)||BIRTH;
   var pts={wt:[],ht:[],hd:[]};
   recs.forEach(function(r){var d=r.data||{};var a=ageM(new Date(r.start_at).getTime());if(a<0)return;
-    if(d.weightKg)pts.wt.push([a,+d.weightKg]);
-    if(d.heightCm)pts.ht.push([a,+d.heightCm]);
-    if(d.headCm)pts.hd.push([a,+d.headCm]);});
+    var pl=placeOf(d);
+    if(d.weightKg)pts.wt.push([a,+d.weightKg,pl]);
+    if(d.heightCm)pts.ht.push([a,+d.heightCm,pl]);
+    if(d.headCm)pts.hd.push([a,+d.headCm,pl]);});
   var h='<div class="ctlrow"><div class="seg2"><button data-gm="wh" class="'+(g.mode==='wh'?'on':'')+'">身高 / 体重</button><button data-gm="hd" class="'+(g.mode==='hd'?'on':'')+'">头围</button></div>';
-  h+='<div class="seg2"><button data-gr="12" class="'+(g.range===12?'on':'')+'">1年</button><button data-gr="24" class="'+(g.range===24?'on':'')+'">2年</button></div></div>';
-  var CH=Math.max(430, window.innerHeight - document.getElementById('hdr').offsetHeight - 225);
+  h+='<div class="seg2"><button data-gv="chart" class="'+(g.view==='chart'?'on':'')+'">图</button><button data-gv="table" class="'+(g.view==='table'?'on':'')+'">表</button></div></div>';
+  if(g.view==='table')return h+growTableHTML(recs);
+  h+='<div class="ctlrow" style="justify-content:flex-end;margin-top:-4px"><div class="seg2"><button data-gr="12" class="'+(g.range===12?'on':'')+'">1年</button><button data-gr="24" class="'+(g.range===24?'on':'')+'">2年</button></div></div>';
+  var CH=Math.max(430, window.innerHeight - document.getElementById('hdr').offsetHeight - 265);
   h+='<div class="gridwrap" style="padding:8px 2px 2px">'+chartSVG(g.mode,g.range,pts,Math.round(CH*360/374))+'</div>';
-  h+='<div class="legend" style="text-wrap:pretty">The WHO Child Growth Standards (2006) · 女宝参考带（近似 ±2SD）</div>';
+  h+='<div class="legend" style="text-wrap:pretty"><span><span style="color:'+PLACE.home.c+'">●</span> 在家测</span><span><span style="color:'+PLACE.clinic.c+'">●</span> 儿保 / 接种点</span></div>';
+  h+='<div class="legend" style="padding-top:2px;text-wrap:pretty">The WHO Child Growth Standards (2006) · 女宝参考带（近似 ±2SD）</div>';
+  return h;
+}
+// 表视图：PiyoLog 那种「看得到每个点背后的数字」。倒序，最新在最上面。
+function growTableHTML(recs){
+  var rows=[];
+  recs.forEach(function(r){
+    var d=r.data||{},ds=bjDateStr(new Date(r.start_at).getTime()),a=ageM(new Date(r.start_at).getTime());
+    var nt=r.note||d.note||'';
+    if(d.weightKg)rows.push([ds,a,'体重',(+d.weightKg).toFixed(2)+' kg',placeOf(d),nt]);
+    if(d.heightCm)rows.push([ds,a,'身高',(+d.heightCm)+' cm',placeOf(d),nt]);
+    if(d.headCm)rows.push([ds,a,'头围',(+d.headCm)+' cm',placeOf(d),nt]);
+  });
+  rows.sort(function(x,y){return x[0]<y[0]?1:x[0]>y[0]?-1:0});
+  if(!rows.length)return '<div class="empty">还没有成长记录</div>';
+  var h='<div class="gtab"><div class="gtr hd"><span class="c1">日期</span><span class="c2">月龄</span><span class="c3">数值</span><span class="c4">·</span><span class="c5">备注</span></div>';
+  rows.forEach(function(r){
+    h+='<div class="gtr"><span class="c1">'+r[0].slice(5)+'</span>'
+      +'<span class="c2">'+r[1].toFixed(1)+'M</span>'
+      +'<span class="c3">'+r[3]+'</span>'
+      +'<span class="c4" style="color:'+PLACE[r[4]].c+'" title="'+PLACE[r[4]].n+'">●</span>'
+      +'<span class="c5">'+esc(r[2]+(r[5]?' · '+r[5]:''))+'</span></div>';
+  });
+  h+='</div><div class="legend" style="text-wrap:pretty"><span><span style="color:'+PLACE.home.c+'">●</span> 在家测</span><span><span style="color:'+PLACE.clinic.c+'">●</span> 儿保 / 接种点</span></div>';
+  h+='<div class="agesrc">两台秤不是同一台，比较趋势时优先看同色的点。</div>';
   return h;
 }
 function chartSVG(mode,R,pts,H){
@@ -879,9 +1018,12 @@ function chartSVG(mode,R,pts,H){
     if(!arr.length)return '';
     arr.sort(function(a,b){return a[0]-b[0]});
     var p='',c='';
+    // 折线仍用指标色（体重绿 / 身高蓝），点按测量地点分色：在家=绿，儿保/接种点=橙
     arr.forEach(function(pt,i){if(pt[0]>R)return;var x=xs(pt[0]),y=ys(pt[1]);
       p+=(p?'L':'M')+x+' '+y+' ';
-      c+='<circle cx="'+x+'" cy="'+y+'" r="2.2" fill="'+color+'"/>'});
+      var cl=(pt[2]==='clinic')?PLACE.clinic.c:color;
+      var rr=(pt[2]==='clinic')?2.9:2.2;
+      c+='<circle cx="'+x+'" cy="'+y+'" r="'+rr+'" fill="'+cl+'"'+(pt[2]==='clinic'?' stroke="#fff" stroke-width="0.8"':'')+'/>'});
     return '<path d="'+p+'" fill="none" stroke="'+color+'" stroke-width="1.6"/>'+c;
   }
   function yAxis(lo,hi,stepV,x,anchor,color){
@@ -1218,13 +1360,13 @@ function renderAgeView(){
       +'<div class="agelead">'+s.lead+'</div>';
     s.items.forEach(function(it){
       var m=it[0]==='yes'?'✓':it[0]==='no'?'✕':'·';
-      h+='<div class="ali '+it[0]+'"><span class="am">'+m+'</span><span>'+it[1]+'</span></div>';
+      h+='<div class="ali a-'+it[0]+'"><span class="am">'+m+'</span><span>'+it[1]+'</span></div>';
     });
     if(s.you)h+='<div class="ayo">👶 <b>悠悠现在</b>：'+s.you+'</div>';
     h+='</div></details>';
   });
   h+='<div class="agered"><div class="art">'+esc(AGE_GUIDE.red.title)+'</div>';
-  AGE_GUIDE.red.items.forEach(function(t){h+='<div class="ali dot"><span class="am">·</span><span>'+t+'</span></div>'});
+  AGE_GUIDE.red.items.forEach(function(t){h+='<div class="ali a-dot"><span class="am">·</span><span>'+t+'</span></div>'});
   h+='</div><div class="agesrc">'+esc(AGE_GUIDE.src)+'</div>';
   document.getElementById('ageview').innerHTML=h;
   fixPad();
@@ -1312,7 +1454,7 @@ function post(bodyObj,cb){
   .then(function(r){return r.json()}).then(function(d){if(d.ok){cb&&cb()}else{toast(d.msg||'操作失败')}})
   .catch(function(){toast('网络不通')});
 }
-function afterEdit(){toast('已修改');closeSheet();loadRec();state.sum.data=null;state.mile.data=null;state.growth.data=null}
+function afterEdit(){toast('已修改');closeSheet();loadRec();state.sum.data=null;state.mile.data=null;state.growth.data=null;state.vax.data=null}
 function closeSheet(){document.getElementById('sheet').style.display='none';document.getElementById('sheetbg').style.display='none'}
 function gotoDate(ds){
   state.date=ds;var p=ds.split('-');
@@ -1337,7 +1479,7 @@ function editTime(rec){
   var utc=Date.UTC(+p[0],+p[1]-1,+p[2],hh,mi)-8*3600e3;
   if(utc>Date.now()+3600e3&&!confirm('这个时间在未来，确定？'))return;
   post({action:'update',id:rec.id,start_at:new Date(utc).toISOString()},function(){
-    closeSheet();state.sum.data=null;state.mile.data=null;state.growth.data=null;
+    closeSheet();state.sum.data=null;state.mile.data=null;state.growth.data=null;state.vax.data=null;
     if(ds===oldDs){toast('已修改');loadRec()}
     else{toast('已移到 '+ds);gotoDate(ds)}
   });
@@ -1441,7 +1583,7 @@ document.addEventListener('click',function(e){var pop=document.getElementById('f
     if(Math.abs(dx)<64||Math.abs(dx)<Math.abs(dy)*1.6)return; // 太短或偏竖向=滚动
     var dir=dx<0?1:-1; // 左滑=下一天/周
     if(state.view==='rec')navRec(dir);
-    else if(state.view==='sum'&&state.sum.sub!=='grow')navSum(dir);
+    else if(state.view==='sum'&&state.sum.sub!=='grow'&&state.sum.sub!=='vax')navSum(dir);
   },{passive:true});
 })();
 state.date=todayStr();
