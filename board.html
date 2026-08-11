@@ -189,6 +189,11 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .agered{background:#fff;border:2px solid #f4c4d4;border-radius:16px;padding:14px 16px;margin-bottom:9px}
 .agered .art{font-size:15.5px;font-weight:700;color:var(--pink);margin-bottom:9px}
 .agesrc{font-size:11px;color:var(--sub);line-height:1.75;padding:4px 6px 0;text-wrap:pretty}
+/* 技能树：自动落在当前月龄段，所以维度切换条必须 sticky，否则滚下去就够不着了 */
+#skillview .dimtabs{position:sticky;top:calc(var(--hdrh,92px) - 1px);z-index:6;background:var(--bg);margin:0 2px 8px;padding:8px 0 7px}
+.cdcf{font-size:10px;padding-left:3px}
+.sknote{font-size:11.5px;color:var(--sub);line-height:1.7;padding:10px 6px 2px;text-wrap:pretty}
+.sknote b{color:var(--ink)}
 /* 疫苗页 */
 .vgrp{margin-bottom:12px}
 .vgh{font-size:12.5px;color:var(--sub);font-weight:600;margin:0 4px 6px;display:flex;align-items:center;gap:6px}
@@ -527,7 +532,10 @@ function renderFresh(d){
   f+=d.speakLastAt?('语音最近 '+ago(new Date(d.speakLastAt).getTime())):'语音暂无';
   document.getElementById('fresh').innerHTML=f;
 }
-function fixPad(){document.getElementById('hdrpad').style.height=document.getElementById('hdr').offsetHeight+'px'}
+function fixPad(){var hh=document.getElementById('hdr').offsetHeight;
+  document.getElementById('hdrpad').style.height=hh+'px';
+  // 技能页的维度切换条要 sticky 在头部下方，所以把头部高度暴露成 CSS 变量
+  document.documentElement.style.setProperty('--hdrh',hh+'px');}
 
 /* ═══ 记录页 ═══ */
 function renderRec(){
@@ -1108,8 +1116,48 @@ var SKILL_DIMS={
   [5,'各年龄男女'],[5,'丰富情绪'],[5,'参与家务劳动'],[5,'其他颜色'],[5,'日用品一级分类'],[5,'日月昼夜'],[5,'基础形状'],[5,'初级配对'],
   [6,'性别刻板印象'],[6,'花纹认知'],[6,'日用品二级分类'],[6,'天气现象'],[6,'认识小肢体'],[6,'自然现象因果'],[6,'丰富职业扮演'],[6,'颜色形状'],[6,'高级配对'],[6,'数量概念'],
   [8,'数理逻辑应用'],[8,'抽象组合形状'],[8,'立体形状'],[8,'事物逻辑关系'],[8,'季节物候'],[8,'地理知识'],[8,'思维题'],[8,'小社会角色游戏']
+ ]},
+ /* ⚠️ 打勾状态按「维度_下标」存在 family_settings.skills 里，
+    所以上面四个维度的节点顺序永远不能动（插一条就会让后面全部错位）。
+    新维度只能往后加。lang / daily 为 2026-08-10 新增，内容来自 CDC 里程碑 +
+    The Montessori Baby 语言篇 + 0-3岁婴幼儿的保育与教育。 */
+ lang:{name:'语言沟通',icon:'💬',color:'#e08a3c',nodes:[
+  [0,'用哭表达需求'],[0,'听到熟悉声音会安静'],[0,'被大声惊到会眨眼'],[0,'模仿面部表情'],[0,'发出元音「啊——」'],[0,'转头找声源'],
+  [1,'咿呀声有了节奏'],[1,'加入辅音 ma / ba / na'],[1,'发尖叫玩自己的声音'],[1,'对着人笑出声'],[1,'对特定页面的书有反应'],
+  [2,'听到自己名字会转头'],[2,'懂「不」'],[2,'会挥手再见'],[2,'重复音节 mama / baba'],[2,'能定位很轻的声音'],[2,'能学会婴语手势'],
+  [3,'会玩躲猫猫'],[3,'能回应简单指令'],[3,'认得好几个词'],[3,'用食指指给你看'],[3,'说出单音节词'],[3,'不哭也能表达想要'],[3,'叫爸爸妈妈'],
+  [4,'说出 3–10 个词'],[4,'能指认身体部位'],[4,'听名字取东西'],[4,'用叠词称呼人（爷爷/姐姐）'],[4,'摇头表示不要'],[4,'自创词指称事物'],
+  [5,'词汇量 50 个以上'],[5,'会说两词短句'],[5,'听懂两步指令'],[5,'会说自己的名字'],[5,'会用「我的」'],
+  [6,'三词以上的句子'],[6,'会问「这是什么」'],[6,'会用「我」'],[6,'会说昨天今天'],
+  [7,'陌生人能听懂大半'],[7,'会讲一段简单经历'],[7,'会问「为什么」'],[7,'会用「因为」'],
+  [8,'复述完整故事'],[8,'看图说话'],[8,'会讲笑话和假装'],[8,'认识自己的名字（字形）']
+ ]},
+ daily:{name:'生活自理',icon:'🥄',color:'#7a9e3a',nodes:[
+  [0,'注视人脸'],[0,'被抱起会安静下来'],[0,'自发微笑'],
+  [1,'认出主要看护人'],[1,'见到熟人会笑'],[1,'吃手安抚自己'],[1,'开始接受勺子'],
+  [2,'认生'],[2,'伸手要抱抱'],[2,'手抓食物自己吃'],[2,'用吸管杯 / 学饮杯'],[2,'穿衣时会配合伸手'],
+  [3,'玩拍手歌类互动游戏'],[3,'就着无盖杯喝'],[3,'手指食物自己吃'],[3,'配合洗手洗脚'],[3,'会盖瓶盖'],[3,'用碗喝水'],[3,'能听懂并遵守简单的「不可以」'],[3,'能自己玩一会儿不用人陪'],
+  [4,'用勺子吃饭（会洒）'],[4,'模仿做家务'],[4,'自己脱袜子 / 帽子'],[4,'对坐便器有兴趣'],[4,'能表示大小便'],[4,'照顾娃娃'],[4,'会把玩具放回原处'],
+  [5,'用勺基本不洒'],[5,'洗手会搓'],[5,'脱简单的衣物'],[5,'和同伴平行游戏'],[5,'白天如厕基本自理'],
+  [6,'自己穿鞋（不分左右）'],[6,'会说「我要」表达需求'],[6,'会等一小会儿'],[6,'自己洗脸'],
+  [7,'自己刷牙（大人再检查）'],[7,'自己穿脱外套'],[7,'会轮流'],[7,'夜间基本不尿床'],
+  [8,'自己洗澡穿衣'],[8,'整理自己的玩具'],[8,'会分享与合作游戏'],[8,'能自己收拾书包']
  ]}};
-state.skill={data:null,dim:'gross'};
+/* CDC《Learn the Signs. Act Early.》里程碑「红线项」——75% 的孩子在该月龄段能做到。
+   按【维度, 节点名】指向技能树，用名字而不是下标，这样以后往树里加节点也不会错位。 */
+var CDC_BAND={
+ 3:[['daily','玩拍手歌类互动游戏'],['lang','会挥手再见'],['lang','叫爸爸妈妈'],['lang','懂「不」'],
+    ['fine','把玩具放盒子里'],['cog','寻找眼前藏物'],['gross','扶物站立'],['gross','扶栏蟹行'],
+    ['daily','就着无盖杯喝'],['fine','二指指尖捏']]
+};
+function cdcOf(band){
+  var out=[];(CDC_BAND[band]||[]).forEach(function(p){
+    var dim=SKILL_DIMS[p[0]];if(!dim)return;
+    var i=-1;dim.nodes.forEach(function(n,k){if(n[1]===p[1])i=k});
+    if(i>=0)out.push({dim:p[0],idx:i,name:p[1],id:p[0]+'_'+i});
+  });return out;
+}
+state.skill={data:null,dim:'gross',scrollTo:true};
 function bandIdx(m){return m<=3?0:m<=6?1:m<=9?2:m<=12?3:m<=18?4:m<=24?5:m<=30?6:m<=36?7:8}
 function loadSkills(){
   fetch(API_BASE+'?skills=1&token='+encodeURIComponent(TOKEN))
@@ -1137,23 +1185,39 @@ function renderSkillView(){
   dim.nodes.forEach(function(n,i){var s=(marks[dimKey+'_'+i]||{}).status;if(s==='done')done++;else if(s==='doing')doing++});
   h+='<div class="prog"><i style="width:'+(total?Math.round(done/total*100):0)+'%;background:'+dim.color+'"></i></div>';
   h+='<div class="progtxt">已掌握 '+done+' · 正在练 '+doing+' · 共 '+total+' 项</div>';
+  // 🚩 = CDC 里程碑，打在节点自己身上就够了，不再单开清单
+  var cdcIds={};Object.keys(CDC_BAND).forEach(function(b2){cdcOf(+b2).forEach(function(c){cdcIds[c.id]=1})});
   for(var b=0;b<SKILL_BANDS.length;b++){
     var ns=[];dim.nodes.forEach(function(n,i){if(n[0]===b)ns.push([n,i])});
     if(!ns.length)continue;
-    h+='<div class="bandgrp"><div class="bh" style="color:'+dim.color+'">'+SKILL_BANDS[b]+(b===curB?'<span class="cur">当前月龄</span>':'')+'</div><div class="nodes">';
+    h+='<div class="bandgrp" data-band="'+b+'"><div class="bh" style="color:'+dim.color+'">'+SKILL_BANDS[b]+(b===curB?'<span class="cur">当前月龄</span>':'')+'</div><div class="nodes">';
     ns.forEach(function(pair){var n=pair[0],i=pair[1],id=dimKey+'_'+i;
       var o=marks[id]||{},s=o.status||'todo';
       var style=s==='done'?'background:'+dim.color+';border-color:'+dim.color+';color:#fff':'';
       h+='<div class="node" data-s="'+s+'" data-sid="'+id+'" style="'+style+'">'
         +(s==='done'?'✅':s==='doing'?'🔸':'⬜')+' '+esc(n[1])
+        +(cdcIds[id]?'<span class="cdcf" title="CDC 里程碑：75% 的孩子这个月龄能做到">🚩</span>':'')
         +'<span class="np" data-nid="'+id+'" data-nm="'+esc(n[1])+'">📝</span>'
         +(o.note?'<div class="nn">📝 '+esc(o.note)+'</div>':'')
         +'</div>';
     });
     h+='</div></div>';
   }
+  h+='<div class="sknote">🚩 CDC 里程碑 —— <b>75% 的孩子</b>在这个月龄段能做到。没做到不等于「晚一点」，'
+    +'是已经落在后四分之一，值得跟医生提一句。</div>';
   document.getElementById('skillview').innerHTML=h;
   fixPad();
+  // 进技能页 / 换维度时，自动把当前月龄段顶到最上面。之前的月龄往上滑随时能看，但不挡路。
+  if(state.skill.scrollTo){
+    state.skill.scrollTo=false;
+    requestAnimationFrame(function(){
+      var el=document.querySelector('#skillview .bandgrp[data-band="'+curB+'"]');
+      if(!el)return;
+      var tabs=document.querySelector('#skillview .dimtabs');
+      var off=(tabs?tabs.offsetHeight:0)+6;   // 让出 sticky 维度条的高度，别被压住
+      document.getElementById('main').scrollTop=Math.max(0,el.offsetTop-off);
+    });
+  }
 }
 document.getElementById('skillview').addEventListener('click',function(e){
   var np=e.target.closest?e.target.closest('.np'):null;
@@ -1166,7 +1230,7 @@ document.getElementById('skillview').addEventListener('click',function(e){
     post({action:'skill',id:nid,skillNote:v},function(){toast('已保存')});
     return;
   }
-  var node=e.target.closest?e.target.closest('.node'):null;if(!node)return;
+  var node=e.target.closest?e.target.closest('[data-sid]'):null;if(!node)return;  // 技能树节点 + 本月龄清单里的行
   var sid=node.getAttribute('data-sid');if(!sid)return;
   var cur=(marks[sid]||{}).status||'todo';
   var next=cur==='todo'?'doing':cur==='doing'?'done':'todo';
@@ -1176,7 +1240,7 @@ document.getElementById('skillview').addEventListener('click',function(e){
 });
 document.getElementById('skillview').addEventListener('click',function(e){
   var b=e.target.closest?e.target.closest('.dimtabs button'):null;if(!b)return;
-  state.skill.dim=b.getAttribute('data-dim');renderSkillView();
+  state.skill.dim=b.getAttribute('data-dim');state.skill.scrollTo=true;renderSkillView();
 },true);
 
 /* ═══ 月龄页（本月龄注意事项） ═══ */
@@ -1534,7 +1598,7 @@ function switchView(vw){
   if(vw==='stat'){state.date=todayStr();if(state.data)renderStat();loadRec()}
   if(vw==='rec'){if(state.data)renderRec();else loadRec()}
   if(vw==='sum'){if(!state.sum.from)state.sum.from=mondayOf(todayStr());if(state.sum.data)renderSum();else loadSum()}
-  if(vw==='skill'){if(state.skill.data)renderSkillView();loadSkills()}
+  if(vw==='skill'){state.skill.scrollTo=true;if(state.skill.data)renderSkillView();loadSkills()}
   if(vw==='age'){renderAgeView()}
   fixPad();
 }
