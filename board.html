@@ -70,6 +70,13 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .row .l1 .pk{color:var(--pink);font-weight:500;margin-left:9px}
 .row .l2{font-size:12.5px;color:var(--sub);line-height:1.5;text-wrap:pretty}
 .row .qt{font-size:11.5px;color:#b8b0a5;line-height:1.5;text-wrap:pretty}
+/* 每日固定事项的虚位行：虚线、留白感，一眼看出「这是还没发生的事」 */
+.row.grow{background:repeating-linear-gradient(135deg,#fff,#fff 6px,#fdfbf9 6px,#fdfbf9 12px)}
+.row.grow .t{color:#b8b0a5}
+.row.grow .nm{color:#9a938a;font-weight:400}
+.gbox{width:32px;height:32px;flex:none;border:1.5px dashed var(--pink);border-radius:50%;display:flex;
+      align-items:center;justify-content:center;color:var(--pink);font-size:17px;margin-top:1px;opacity:.75}
+.gtag{font-size:10.5px;color:var(--pink);border:1px solid #f5d3e0;border-radius:99px;padding:1px 7px;margin-left:8px}
 .row .gap{font-size:11.5px;color:var(--pink);opacity:.85;line-height:1.7}
 .by{flex:none;font-size:10.5px;padding:1px 7px;border-radius:99px;background:var(--pinklite);color:var(--pink);white-space:nowrap;margin-top:7px}
 .by.piyo{background:#f2efeb;color:#a39a8f}
@@ -125,6 +132,23 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .qic .pic{width:22px;height:22px}.qic .pic svg{width:14px;height:14px}
 .qcell{flex:1;text-align:center;font-size:10px;line-height:1.55;padding:5px 0;color:var(--ink);border-left:1px solid #f7f3ef}
 .qcell b{color:var(--pink);font-weight:600}
+/* 进食·种类视图 */
+.qtot{width:42px;flex:none;font-size:10px;line-height:1.5;color:var(--sub);text-align:center;padding:5px 0;border-left:1px solid var(--line);font-weight:600}
+.qtot.zero{color:#d94f7a}
+.kbar{border-radius:12px;padding:10px 13px;font-size:13px;line-height:1.65;margin:0 2px 9px;text-wrap:pretty}
+.kbar b{font-weight:700}
+.kbar.bad{background:#fff1f5;color:#a8365c;border-left:4px solid #d94f7a}
+.kbar.warn{background:#fffbf0;color:#8a6a1c;border-left:4px solid #f2b41c}
+.kbar.ok{background:#eef7f1;color:#2f7a55;border-left:4px solid #3a9d6a}
+.kbar.none{background:#fff;color:var(--sub);border-left:4px solid var(--line)}
+.kcard{background:#fff;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:11px 13px;margin:9px 2px 4px}
+.kh{font-size:12.5px;font-weight:600;color:var(--sub);margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.kh .n2{background:var(--line);border-radius:99px;padding:1px 8px;font-size:11px;font-weight:400}
+.krow{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--line)}
+.krow:first-of-type{border-top:none}
+.kt{flex:none;width:62px;font-size:12px;color:var(--sub)}
+.kk{flex:1;display:flex;flex-wrap:wrap;gap:5px}
+.kk i{font-style:normal;font-size:12px;background:var(--pinklite);color:#a8456f;border-radius:99px;padding:2px 9px}
 .bars{background:#fff;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:14px 4px 6px 8px;display:flex;align-items:flex-end;min-height:280px}
 .barcol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
 .bartot{font-size:10.5px;font-weight:700;margin-bottom:3px}
@@ -155,10 +179,13 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .bh{font-size:13px;font-weight:700;margin-bottom:9px}
 .bh .cur{font-size:10px;color:#fff;background:var(--pink);border-radius:99px;padding:2px 8px;margin-left:8px;font-weight:600}
 .nodes{display:flex;flex-wrap:wrap;gap:8px}
-.node{border:1.5px solid var(--line);border-radius:10px;padding:7px 10px;font-size:13px;background:#faf8f6;color:var(--ink);display:flex;align-items:center;gap:5px}
+.node{border:1.5px solid var(--line);border-radius:10px;padding:7px 10px;font-size:13px;background:#faf8f6;color:var(--ink);display:flex;flex-wrap:wrap;align-items:center;gap:5px}
 .node[data-s="doing"]{border-color:#f2b41c;background:#fdf6e3}
 .node .np{font-size:10px;opacity:.7;padding-left:2px}
-.nn{width:100%;font-size:11px;color:var(--sub);margin-top:3px;text-wrap:pretty}
+.node[data-s="done"] .np{opacity:.95}
+.nn{width:100%;font-size:11px;color:var(--sub);margin-top:3px;text-wrap:pretty;line-height:1.5}
+/* 已掌握的节点底色是维度主色，笔记文字得跟着翻白，否则灰字压在深色上根本看不清 */
+.node[data-s="done"] .nn{color:rgba(255,255,255,.95)}
 /* 月龄页 */
 #ageview{display:none;padding:10px 10px 20px}
 .agehero{background:linear-gradient(135deg,#f687b0,#ee6fa0);color:#fff;border-radius:16px;padding:15px 17px;margin-bottom:12px;box-shadow:0 2px 8px rgba(238,111,160,.25)}
@@ -212,6 +239,7 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .vtag{font-size:10px;border-radius:99px;padding:1px 7px;font-weight:600;flex:none}
 .vtag.nip{background:#e8f3ec;color:#3a7d5c}
 .vtag.npv{background:#eef1f8;color:#5a6b93}
+.vauto{font-size:10px;background:#eef1f8;color:#5a6b93;border-radius:99px;padding:1px 7px;margin-left:6px;font-weight:600}
 /* 成长曲线数据表 */
 .gtab{background:#fff;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);overflow:hidden;font-variant-numeric:tabular-nums}
 .gtr{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:13px}
@@ -326,6 +354,23 @@ function ymdUtc(s){var p=s.split('-');return Date.UTC(+p[0],+p[1]-1,+p[2])}
 function shiftDate(s,n){var d=new Date(ymdUtc(s)+n*86400e3);return d.getUTCFullYear()+'-'+pad(d.getUTCMonth()+1)+'-'+pad(d.getUTCDate())}
 function mondayOf(s){var dow=new Date(ymdUtc(s)).getUTCDay();return shiftDate(s,-((dow+6)%7))}
 function dayStartMs(s){return ymdUtc(s)-8*3600e3}
+/* ═══ 每日固定事项的虚位行 ═══
+   第一版只有维 D / AD 一项：每天该吃、且 D 与 AD 严格隔天交替，所以「空白」本身有意义。
+   频次天然波动的事（辅食顿数、大便、洗澡）不放进来——空白说明不了任何事，只会制造噪音。
+   摆在 9:30（近 90 天的维生素记录全部落在 09:00–09:40）。当天已有记录就不显示。
+   今天该吃 D 还是 AD 由服务端按上一条推出来（vitaminNext），前端不猜。*/
+var DAILY_ITEMS=[{key:'vitamin',type:'vitamin',at:9*60+30,name:{D:'维生素 D',AD:'维生素 AD'}}];
+function dailyGhost(ds,recs,resp){
+  if(ymdUtc(ds)>ymdUtc(todayStr()))return null;           // 未来的日子不摆
+  var it=DAILY_ITEMS[0];
+  var has=false;
+  recs.forEach(function(r){
+    if(r.type===it.type&&bjDateStr(new Date(r.start_at).getTime())===ds)has=true;
+  });
+  if(has)return null;
+  var v=(resp&&resp.vitaminNext)||'D';
+  return {ghost:true,key:it.key,variant:v,label:it.name[v]||it.name.D,t:dayStartMs(ds)+it.at*60000};
+}
 function durTxt(min){min=Math.round(min);var h=Math.floor(min/60),m=min%60;return (h?h+'小时':'')+(m||!h?m+'分钟':'')}
 function durTxt5(min){return durTxt(Math.floor(min/5)*5)}
 function ago(ms){var m=Math.max(0,Math.round((Date.now()-ms)/60000));if(m<60)return m+'分钟前';return Math.floor(m/60)+'小时'+(m%60)+'分钟前'}
@@ -551,11 +596,22 @@ function renderRec(){
   renderFresh(d);
   var now=Date.now();
   var nodes=buildNodes(d.records||[]).filter(function(n){return bjDateStr(n.t)===ds});
+  // 每日固定事项的「虚位行」：当天没记就摆在惯常时间等你点。
+  // 手表/语音同步进来一条真实记录后，它自己让位（下面 has 判定）。
+  var gh=dailyGhost(ds,d.records||[],d);
+  if(gh){nodes.push(gh);nodes.sort(function(a,b){return a.t-b.t})}
   var lastWake=null,lastMilk=null,lastSleepEvt=0;
   if(isToday)nodes.forEach(function(n){if(n.t<=now){if(n.sk&&n.t>lastSleepEvt)lastSleepEvt=n.t;if(n.kind==='wake')lastWake=n;if(n.kind==='milk')lastMilk=n}});
   var out='';
   if(!nodes.length)out='<div class="empty">没有记录</div>';
   nodes.forEach(function(n){
+    if(n.ghost){
+      out+='<div class="row grow" data-ghost="'+n.key+'" data-variant="'+esc(n.variant)+'" data-date="'+ds+'">'
+        +'<span class="t">'+fmtT(n.t)+'</span><span class="gbox">＋</span><div class="mid">'
+        +'<div class="l1"><span class="nm">'+esc(n.label)+'</span><span class="gtag">还没记</span></div>'
+        +'<div class="l2">点一下补上 · 手表同步后这行会自己让位</div></div></div>';
+      return;
+    }
     var w=who(n.rec);
     out+='<div class="row" data-id="'+n.rec.id+'" data-label="'+esc(n.delLabel)+'">';
     out+='<span class="t">'+fmtT(n.t)+'</span>'+badge(n.pt)+'<div class="mid">';
@@ -630,6 +686,84 @@ function gridHTML(rs,opt){
 }
 function inDay(r,ds){return bjDateStr(new Date(r.start_at).getTime())===ds}
 
+/* ═══ 摘要·进食·「种类」视图 ═══
+   data.food 是自由文本（「鹅肝番茄青菜鸡蛋面」），靠 Supabase food_tag 关键词表切成类别。
+   关键词已按长度倒序，匹配时命中就把那段挖掉再继续，避免「猪肝」被「肝」重复统计。
+   12 月龄是铁需求高峰，红肉/肝脏/鱼虾单独拎出来判读。加新食材说法只改 food_tag 表，不用发版。*/
+var TAGS=[['red_meat','🥩','红肉',1],['liver','🫀','肝脏',1],['fish','🐟','鱼虾',1],
+          ['poultry','🍗','禽肉',0],['egg','🥚','蛋',0],['dairy','🥛','乳品',0],
+          ['veg','🥬','蔬菜',0],['fruit','🍎','水果',0],['bean','🫘','豆类',0],
+          ['grain','🍚','主食',0],['nut','🥜','坚果',0]];
+function tagFood(text,ftags){
+  var hits={},left=String(text||'');
+  for(var i=0;i<ftags.length;i++){
+    var k=ftags[i].keyword;
+    if(left.indexOf(k)>=0){
+      (hits[ftags[i].tag]=hits[ftags[i].tag]||[]).push(k);
+      left=left.split(k).join('　');           // 挖掉已命中的词，防止重复计数
+    }
+  }
+  return {hits:hits,left:left};
+}
+function kindHTML(rs,days){
+  var ftags=((state.sum.data||{}).foodTags)||[];
+  if(!ftags.length)return '<div class="empty">还没拿到食材关键词表<br><span style="font-size:12px">刷新一下页面试试</span></div>';
+  var byDay={},weekHit={},unknown={},nSolid=0;
+  days.forEach(function(ds){byDay[ds]={}});
+  rs.forEach(function(r){
+    if(r.type!=='feed_solid'&&r.type!=='snack')return;
+    var ds=bjDateStr(new Date(r.start_at).getTime());if(!(ds in byDay))return;
+    var txt=(r.data||{}).food||r.note||'';if(!txt)return;
+    nSolid++;
+    var t=tagFood(txt,ftags);
+    Object.keys(t.hits).forEach(function(tag){
+      byDay[ds][tag]=(byDay[ds][tag]||0)+1;
+      t.hits[tag].forEach(function(k){weekHit[tag]=weekHit[tag]||{};weekHit[tag][k]=(weekHit[tag][k]||0)+1});
+    });
+    // 剩下没被认出来的中文词，攒起来提示可以补进关键词表
+    (t.left.match(/[一-龥]{2,}/g)||[]).forEach(function(w){
+      if(/毫升|大概|还有|一点|一个|自己|今天|昨天|中午|晚上|早上|剩下|吃完|吃了|加上|以及/.test(w))return;
+      unknown[w]=(unknown[w]||0)+1;
+    });
+  });
+  var iron=0;['red_meat','liver','fish'].forEach(function(t){Object.keys(byDay).forEach(function(d){iron+=byDay[d][t]||0})});
+  var h='';
+  // ① 铁摄入判读（12 月龄铁需求高峰，这是这张页面最该先说的一句话）
+  if(!nSolid)h+='<div class="kbar none">本周还没有辅食记录</div>';
+  else if(iron===0)h+='<div class="kbar bad">⚠️ 本周<b>红肉 / 肝脏 / 鱼虾 0 次</b> · 12 月龄是铁需求高峰，胎里带的储备 4–6 个月就耗尽了</div>';
+  else if(iron<2)h+='<div class="kbar warn">本周动物性铁来源 <b>'+iron+' 次</b> · 建议每周红肉 2–3 次 + 肝脏 1 次</div>';
+  else h+='<div class="kbar ok">本周动物性铁来源 <b>'+iron+' 次</b> ✅ 达到每周 2–3 次的建议</div>';
+  // ② 类别 × 7 天
+  h+='<div class="qtable">';
+  TAGS.forEach(function(t){
+    var tot=0;days.forEach(function(ds){tot+=byDay[ds][t[0]]||0});
+    if(!tot&&!t[3])return;                      // 铁三样即使 0 次也留着，其余没吃过就不占地方
+    h+='<div class="qrow"><span class="qic" style="font-size:15px">'+t[1]+'</span>';
+    days.forEach(function(ds){var n=byDay[ds][t[0]]||0;
+      h+='<div class="qcell">'+(n?'<b>'+n+'</b>':'<span style="color:#ddd">·</span>')+'</div>'});
+    h+='<span class="qtot'+(t[3]&&!tot?' zero':'')+'">'+t[2]+'<br>'+tot+'</span></div>';
+  });
+  h+='</div>';
+  h+='<div class="daylabs">';
+  days.forEach(function(ds){var dow=new Date(ymdUtc(ds)).getUTCDay();
+    h+='<div class="daylab'+(dow===6?' sat':'')+(dow===0?' sun':'')+'">'+mdLabel(ds)+'</div>'});
+  h+='<div style="width:42px;flex:none"></div></div>';
+  // ③ 本周具体吃到的食材
+  var chips='';
+  TAGS.forEach(function(t){
+    var m=weekHit[t[0]];if(!m)return;
+    chips+='<div class="krow"><span class="kt">'+t[1]+' '+t[2]+'</span><span class="kk">'
+      +Object.keys(m).sort(function(a,b){return m[b]-m[a]}).map(function(k){
+          return '<i>'+esc(k)+(m[k]>1?'·'+m[k]:'')+'</i>'}).join('')+'</span></div>';
+  });
+  h+='<div class="kcard"><div class="kh">本周吃到的食材 <span class="n2">'+nSolid+' 顿辅食</span></div>'
+    +(chips||'<div class="krow"><span class="kk" style="color:var(--sub)">还没有可识别的食材</span></div>')+'</div>';
+  var uk=Object.keys(unknown).sort(function(a,b){return unknown[b]-unknown[a]}).slice(0,10);
+  if(uk.length)h+='<div class="agesrc">没认出来的词：'+uk.map(esc).join('、')
+    +'。<b>要让它们被统计，把词加进 Supabase 的 food_tag 表即可，不用发版。</b></div>';
+  return h;
+}
+
 function renderSum(){
   var sd=state.sum.data;if(!sd)return;
   BIRTH=(sd.baby&&sd.baby.birth)||BIRTH;
@@ -646,7 +780,7 @@ function renderSum(){
     h+=gridHTML(rs,{types:null,sleep:true,counts:null});
   }
   if(sub==='feed'){
-    h+='<div class="ctlrow"><span></span><div class="seg2"><button data-fm="time" class="'+(state.sum.feedMode==='time'?'on':'')+'">时间</button><button data-fm="amount" class="'+(state.sum.feedMode==='amount'?'on':'')+'">量</button></div><span></span></div>';
+    h+='<div class="ctlrow"><span></span><div class="seg2"><button data-fm="time" class="'+(state.sum.feedMode==='time'?'on':'')+'">时间</button><button data-fm="amount" class="'+(state.sum.feedMode==='amount'?'on':'')+'">量</button><button data-fm="kind" class="'+(state.sum.feedMode==='kind'?'on':'')+'">种类</button></div><span></span></div>';
     // 周均（截至昨天）——时间视图悬浮在图表右上角，量视图仍在底部一行
     var ystF=shiftDate(todayStr(),-1),fA=[],sA=[],bA=[];
     days.forEach(function(ds){
@@ -660,7 +794,9 @@ function renderSum(){
     });
     var avF=function(a){return Math.round(a.reduce(function(x,y){return x+y},0)/a.length)};
     var feedAvg=fA.length?'<div class="avgfloat"><span style="border:1.5px solid #f5a623;color:#a8720c">平均奶 '+avF(fA)+'ml</span><span style="border:1.5px solid #8cc63e;color:#5e8f2e">平均辅食 '+avF(sA)+'ml</span><span style="border:1.5px solid #f27ba3;color:#c14e7d">平均母乳 '+avF(bA)+'分</span></div>':'';
-    if(state.sum.feedMode==='time'){
+    if(state.sum.feedMode==='kind'){
+      h+=kindHTML(rs,days);
+    }else if(state.sum.feedMode==='time'){
       h+=gridHTML(rs,{h:sleepH(),overlay:feedAvg,types:FEEDT,sleep:false,counts:function(ds){
         var b=0,f=0,s=0;rs.forEach(function(r){if(!inDay(r,ds))return;if(r.type==='feed_breast')b++;if(r.type==='feed_formula')f++;if(r.type==='feed_solid')s++});
         var o=[];if(b)o.push('<span style="color:#f27ba3">●</span><b>'+b+'次</b>');if(f)o.push('<span style="color:#f5a623">●</span><b>'+f+'次</b>');if(s)o.push('<span style="color:#8cc63e">●</span><b>'+s+'次</b>');
@@ -691,7 +827,7 @@ function renderSum(){
       h+='</div><div class="daylabs" style="padding-left:34px">'+days.map(function(ds){var dow=new Date(ymdUtc(ds)).getUTCDay();return '<div class="daylab'+(dow===6?' sat':'')+(dow===0?' sun':'')+'">'+mdLabel(ds)+'</div>'}).join('')+'</div>';
       h+='<div class="legend"><span class="lg"><i style="background:#f5a623"></i>配方奶</span><span class="lg"><i style="background:#8cc63e"></i>辅食</span><span class="lg"><i style="background:#54b8e0"></i>水/饮料</span></div>';
     }
-    if(state.sum.feedMode!=='time'&&fA.length){
+    if(state.sum.feedMode==='amount'&&fA.length){
       h+='<div class="legend" style="padding-top:8px">平均：<span style="color:#f5a623;font-weight:600">奶 '+avF(fA)+'ml</span>　<span style="color:#8cc63e;font-weight:600">辅食 '+avF(sA)+'ml</span>　<span style="color:#f27ba3;font-weight:600">母乳 '+avF(bA)+'分</span></div>';
     }
   }
@@ -894,20 +1030,57 @@ function loadVax(){
 function dDiff(a,b){return Math.round((ymdUtc(b)-ymdUtc(a))/86400e3)}
 function addDays(ds,n){return bjDateStr(ymdUtc(ds)+n*86400e3)}
 function monthToDate(m){return bjDateStr(ymdUtc(BIRTH)+Math.round(m*30.4375)*86400e3)}
+/* 「说话就记」写下来的疫苗只有一句文字（如「手足口第二针」「口服轮状第二剂+肺炎十三价第二针」），
+   没有 code/剂次。这里按 vaccine_alias 表 + 「第X针」把它自动挂到计划表上，
+   挂不上的仍原样列在「已记录但未挂进计划」里，绝不猜。别名要加，改 Supabase 那张表就行。*/
+var CN_NUM={'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'两':2,'首':1,'1':1,'2':2,'3':3,'4':4,'5':5,'6':6};
+function parseDose(seg){
+  var m=seg.match(/第\s*([一二三四五六1-6])\s*[针剂]/);
+  if(m)return CN_NUM[m[1]]||null;
+  if(/首[针剂]/.test(seg))return 1;
+  if(/加强/.test(seg))return 0;  // 0 = 剂次未知但确定是加强针，交给下面按已种数推
+  return null;
+}
+function resolveShot(text,alias){
+  var out=[];
+  // 一条记录可能写了两针：「口服轮状第二剂+肺炎十三价第二针」
+  (text||'').split(/[+＋、,，和]/).forEach(function(seg){
+    if(!seg.trim())return;
+    for(var i=0;i<alias.length;i++){                 // alias 已按长度倒序，先长后短
+      if(seg.indexOf(alias[i].alias)>=0){
+        out.push({code:alias[i].code,dose:parseDose(seg),seg:seg.trim()});
+        break;
+      }
+    }
+  });
+  return out;
+}
 function vaxHTML(){
   var vd=state.vax.data;BIRTH=(vd.baby&&vd.baby.birth)||BIRTH;
   var today=todayStr(),curM=(ymdUtc(today)-ymdUtc(BIRTH))/86400e3/30.4375;
-  // 已种：code_dose -> 日期
-  var done={},extra=[];
+  var alias=vd.alias||[];
+  // 已种：code_dose -> {日期, 是否自动识别}
+  var done={},extra=[],cnt={};
   (vd.shots||[]).forEach(function(s){
     var ds=bjDateStr(new Date(s.start_at).getTime());
     var arr=(s.data||{}).vax;
-    if(arr&&arr.length)arr.forEach(function(v){done[v.code+'_'+v.dose]=ds});
-    else extra.push({d:ds,t:s.note||(s.data||{}).note||'未标注疫苗'});
+    if(arr&&arr.length){
+      arr.forEach(function(v){done[v.code+'_'+v.dose]={d:ds};cnt[v.code]=Math.max(cnt[v.code]||0,v.dose)});
+      return;
+    }
+    var txt=s.note||(s.data||{}).note||'';
+    var hit=resolveShot(txt,alias);
+    if(!hit.length){extra.push({d:ds,t:txt||'未标注疫苗'});return}
+    hit.forEach(function(v){
+      var dose=v.dose;
+      if(!dose)dose=(cnt[v.code]||0)+1;              // 没写第几针就按已种的往后顺推
+      done[v.code+'_'+dose]={d:ds,auto:true};
+      cnt[v.code]=Math.max(cnt[v.code]||0,dose);
+    });
   });
   var GRP={late:[],due:[],later:[],done:[]};
   (vd.plan||[]).forEach(function(p){
-    var key=p.code+'_'+p.dose_no,prev=p.dose_no>1?done[p.code+'_'+(p.dose_no-1)]:null;
+    var key=p.code+'_'+p.dose_no,pv=p.dose_no>1?done[p.code+'_'+(p.dose_no-1)]:null,prev=pv?pv.d:null;
     var st,why='';
     if(done[key]){st='done'}
     else if(p.due_month_max!=null&&curM>+p.due_month_max){st='late';why='应种窗口 '+p.due_month_min+'–'+p.due_month_max+' 月龄已过'}
@@ -920,7 +1093,7 @@ function vaxHTML(){
       var dd=(d2&&ymdUtc(d2)>ymdUtc(d1))?d2:d1;
       why=(p.dose_no>1&&!prev)?'等上一剂':'预计 '+mdLabel(dd)+' 起可约';
     }
-    GRP[st].push({p:p,st:st,why:why,on:done[key]||null,prev:prev});
+    GRP[st].push({p:p,st:st,why:why,on:done[key]?done[key].d:null,auto:done[key]&&done[key].auto,prev:prev});
   });
   var TITLE={late:['⚠️ 逾期 / 待补录','#c2436a'],due:['🟡 现在可以约','#a8791f'],later:['⏳ 之后','#9a938a'],done:['✅ 已完成','#3a9d6a']};
   var h='';
@@ -934,7 +1107,7 @@ function vaxHTML(){
         +'<span class="dz">第 '+p.dose_no+' 剂</span>'
         +'<span class="vtag '+p.category+'">'+(p.category==='nip'?'免费':'自费')+'</span></div>';
       var s2='';
-      if(it.on)s2='<span class="ok">'+it.on+'</span> 接种';
+      if(it.on)s2='<span class="ok">'+it.on+'</span> 接种'+(it.auto?'<span class="vauto">自动识别</span>':'');
       else if(it.st==='late')s2='<span class="warn">'+it.why+'</span>';
       else s2=it.why;
       if(it.prev&&!it.on)s2+='　·　上一剂 '+it.prev;
@@ -948,7 +1121,8 @@ function vaxHTML(){
     extra.forEach(function(e){h+='<div class="vc done"><div class="vct"><span>'+esc(e.t)+'</span></div><div class="vcs"><span class="ok">'+e.d+'</span> 接种</div></div>'});
     h+='</div>';
   }
-  h+='<div class="agesrc">计划表存在 Supabase <b>vaccine_plan</b>，要加疫苗或改程序改表即可，不用发版。'
+  h+='<div class="agesrc">计划表存在 Supabase <b>vaccine_plan</b>，别名在 <b>vaccine_alias</b>，要加疫苗或改程序改表即可，不用发版。'
+    +'语音记的疫苗会按名字和「第X针」<b>自动挂进计划</b>（标「自动识别」）；认不出来的原样列在最下面。'
     +'一切以本地接种门诊和接种本为准；程序会随各地政策和说明书更新。</div>';
   return h;
 }
@@ -1198,7 +1372,7 @@ function renderSkillView(){
         +(s==='done'?'✅':s==='doing'?'🔸':'⬜')+' '+esc(n[1])
         +(cdcIds[id]?'<span class="cdcf" title="CDC 里程碑：75% 的孩子这个月龄能做到">🚩</span>':'')
         +'<span class="np" data-nid="'+id+'" data-nm="'+esc(n[1])+'">📝</span>'
-        +(o.note?'<div class="nn">📝 '+esc(o.note)+'</div>':'')
+        +(o.note?'<div class="nn">'+esc(o.note)+'</div>':'')  /* 📝 只出现在右边那个按钮上，笔记正文别再重复一个 */
         +'</div>';
     });
     h+='</div></div>';
@@ -1253,7 +1427,7 @@ document.getElementById('skillview').addEventListener('click',function(e){
    每条 you 是「悠悠现在的实际情况」，来自 2026-08-10 那次数据体检，换月龄时要一起更新。*/
 var AGE_GUIDE={
  band:'12 月龄',
- sub:'适用 11–13 个月 · 2026-08-10 编',
+ sub:'适用 11–13 个月 · 2026-08-10 编 · 08-11 修订睡眠',
  top:[
   '把<b>红肉和肝脏</b>加回辅食轮换——这个月龄铁需求最高',
   '补上<b>手足口第二针</b>，约<b>13 价加强针</b>（满周岁就能打）',
@@ -1317,15 +1491,16 @@ var AGE_GUIDE={
  {icon:'😴',title:'睡眠',
   lead:'<b>一岁并不是「基本都能自主入睡」。</b>研究显示 12 月龄仍有<b>约一半</b>的孩子夜醒后需要大人介入才能重新入睡；每晚醒 1–3 次是常态。还要抱哄，是一半孩子的现状，不是掉队。',
   items:[
-   ['dot','这个月龄每天需要<b>12–16 小时</b>（含小睡）。作息固定会容易得多'],
-   ['dot','白天小睡这个月龄典型是<b>2 次、共 2–3 小时</b>。白天睡满 4 小时，夜里的睡眠压力就不够撑到天亮'],
+   ['dot','这个月龄每天需要<b>12–16 小时</b>（含小睡）。夜里 <b>9–12 小时</b>，白天小睡 <b>2–5 小时</b>，小睡 <b>1–2 次</b>'],
+   ['dot','<b>所有婴儿每晚都会短暂醒 4–6 次。</b>能自己接上觉的叫 self-soother，需要大人介入的叫 signaler——区别不在醒不醒，在会不会自己接'],
+   ['no','<b>不要为了让夜里睡好而压缩白天小睡。</b>权威原文：压小睡的结果是过度疲劳、夜里睡得更差'],
    ['yes','困倦信号（手脚抽动、揉眼、打哈欠）出现就启动<b>短仪式</b>：预告 → 换尿布 → 一首歌或一本短书 → 放下'],
    ['yes','这个月龄已经听得懂话，可以<b>提前预告</b>：「我们把玩具收起来，要睡觉了」'],
    ['dot','抱睡着的孩子，半夜浅睡交界醒来时，找的还是「被抱着」这个条件——这叫<b>入睡联想</b>'],
-   ['yes','想改的话最省力的一步是<b>压小睡</b>，不是硬改哄睡：下午那觉不超过 1.5 小时，且不晚于 15:30 结束'],
-   ['yes','再进一步是把「放下」提前一点点——在她<b>将睡未睡</b>时放下，最后 5% 由她自己完成。可以极慢推进，不需要哭声控制']
+   ['yes','要动就动这里：把「放下」<b>提前一点点</b>——在她<b>将睡未睡</b>时放下，最后 5% 由她自己完成。可以极慢推进，不需要哭声控制'],
+   ['dot','别掐「清醒窗」。AAP 和 CDC 都没有官方清醒窗表格，那是行业惯例、缺乏证据；<b>看孩子的困倦信号，不看表</b>']
   ],
-  you:'悠悠总睡眠中位 13.7 小时（标准 12–16，达标偏上），小睡 2 次共 3.7 小时（偏多）。夜觉近 21 晚有 19 晚分成 2–3 段，典型是 20:15 睡 → 00:40 醒 → <em>醒着约 1 小时</em> → 01:40 再睡到 7:00。不是睡不够，是被切成两块。<em>数据里没有一条支持「必须干预」。</em>'},
+  you:'悠悠总睡眠中位 13.7 小时（标准 12–16，达标）。小睡 2 次共 3.7 小时——<em>按 2–5 小时的权威范围，这是正常的</em>（2026-08-11 更正：此前按 2–3 小时判成「偏多」，那个数出处不硬）。夜觉中位 10.2 小时，近 21 晚有 19 晚分成 2–3 段，典型是 20:15 睡 → 00:40 醒 → 醒着约 1 小时 → 01:40 再睡到 7:00。<em>数据里没有一条支持「必须干预」。</em>'},
 
  {icon:'✋',title:'打人、扔东西、咬人',
   lead:'<b>9 到 12 个月</b>开始出现，是她在表达强烈偏好。这不是「调皮」，是沟通能力还不够。先理解 → 再翻译 → 再温和而明确地设界。',
@@ -1616,6 +1791,15 @@ document.getElementById('todayBtn').onclick=function(){
 document.getElementById('dpick').onchange=function(){if(this.value){state.date=this.value;loadRec()}};
 document.getElementById('tl').addEventListener('click',function(e){
   if(e.target.getAttribute&&e.target.getAttribute('data-clear')){loadRec();return}
+  var gh=e.target.closest?e.target.closest('[data-ghost]'):null;
+  if(gh){
+    if(gh.getAttribute('data-busy'))return;                // 防连点
+    gh.setAttribute('data-busy','1');gh.style.opacity='.5';
+    post({action:'addDaily',key:gh.getAttribute('data-ghost'),
+          date:gh.getAttribute('data-date'),variant:gh.getAttribute('data-variant')},
+      function(){toast('已记上 ✅');loadRec();state.sum.data=null});
+    return;
+  }
   var row=e.target.closest?e.target.closest('.row'):null;if(!row)return;
   var go=row.getAttribute('data-goto');
   if(go){state.date=go;loadRec();return}
