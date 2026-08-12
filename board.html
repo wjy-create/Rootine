@@ -424,6 +424,9 @@ function buildNodes(rs){
       nodes.push({t:st,pt:'feed_breast',name:'母乳',pink:breastPink(d),quote:quote,rec:r,kind:'milk',delLabel:'母乳 '+fmtT(st)});
     }else if(r.type==='feed_formula'){
       nodes.push({t:st,pt:'feed_formula',name:'配方奶',pink:formulaPink(d),quote:quote,rec:r,kind:'milk',delLabel:'配方奶 '+fmtT(st)});
+    }else if(r.type==='feed_bottle'){
+      // v20 修：瓶喂母乳原先掉进通用 else 分支，ml 从不显示、也不进任何奶量统计（2025-09-13 起共 42 条静默漏记）
+      nodes.push({t:st,pt:'feed_bottle',name:'瓶喂母乳',pink:formulaPink(d),quote:quote,rec:r,kind:'milk',delLabel:'瓶喂母乳 '+fmtT(st)});
     }else if(r.type==='feed_solid'){
       nodes.push({t:st,pt:'feed_solid',name:'辅食',pink:d.ml?d.ml+'ml':'',sub:d.food||'',quote:quote,rec:r,delLabel:'辅食 '+fmtT(st)});
     }else if(r.type==='vitamin'||r.type==='probiotic'){
@@ -462,12 +465,13 @@ function statCards(rs){
   var now=Date.now(),today=todayStr(),h='';
   function pick(types){var b=null;rs.forEach(function(r){if(types.indexOf(r.type)<0)return;var t=new Date(r.start_at).getTime();if(!b||t>b._t){r._t=t;b=r}});return b}
   // 今日累计
-  var tF=0,tS=0,tSml=0,tB=0,tBL=0,tBR=0,nPoop=0,slMin=0,napMin=0;
+  var tF=0,tBot=0,tS=0,tSml=0,tB=0,tBL=0,tBR=0,nPoop=0,slMin=0,napMin=0;
   rs.forEach(function(r){
     if(r.type==='sleep'){var ov=sleepOverlapMin(r,today);if(ov){slMin+=ov;if(isNapRec(r))napMin+=ov}return}
     if(bjDateStr(new Date(r.start_at).getTime())!==today)return;
     var d=r.data||{};
     if(r.type==='feed_formula')tF+=(+d.ml||0);
+    if(r.type==='feed_bottle')tBot+=(+d.ml||0);
     if(r.type==='feed_solid'){tS++;tSml+=(+d.ml||0)}
     if(r.type==='feed_breast'){tB++;if(d.open&&d.segs){var so=segSums(d.segs);tBL+=so.L;tBR+=so.R}else{tBL+=(+d.leftMin||0)+(+d.min||0);tBR+=(+d.rightMin||0)}}
     if(r.type==='diaper_poop')nPoop++;
@@ -476,9 +480,9 @@ function statCards(rs){
   var fd=pick(['feed_breast','feed_formula','feed_solid','feed_bottle']);
   var cv='今天还没有喂养记录',cs='';
   if(fd){var fdd=fd.data||{};
-    var det=fd.type==='feed_breast'?breastPink(fdd):(fd.type==='feed_formula'?formulaPink(fdd):((fdd.ml?fdd.ml+'ml ':'')+(fdd.food||'')));
+    var det=(fd.type==='feed_breast')?breastPink(fdd):((fd.type==='feed_formula'||fd.type==='feed_bottle')?formulaPink(fdd):((fdd.ml?fdd.ml+'ml ':'')+(fdd.food||'')));
     cv=fmtT(fd._t)+' '+(LABEL[fd.type]||'')+' '+esc(det)+'<br>距现在 <b>'+durTxt5((now-fd._t)/60000)+'</b>'}
-  cs='今日 配方奶 '+tF+'ml · 辅食 '+tS+' 顿'+(tSml?'（'+tSml+'ml）':'')+' · 亲喂 '+tB+' 次';
+  cs='今日 配方奶 '+tF+'ml'+(tBot?' · 瓶喂母乳 '+tBot+'ml':'')+' · 辅食 '+tS+' 顿'+(tSml?'（'+tSml+'ml）':'')+' · 亲喂 '+tB+' 次';
   // 下顿先喂哪边：看两侧各自「上一次被排空」的时刻（亲喂+挤奶都算），更久没排的一侧优先（防胀奶）；分钟数只作展示
   var lastL=0,lastR=0;
   rs.forEach(function(r){
@@ -545,13 +549,14 @@ function renderStat(){
 function gridH(){return Math.max(400, window.innerHeight - document.getElementById('hdr').offsetHeight - 168)}
 function sleepH(){return Math.max(340, window.innerHeight - document.getElementById('hdr').offsetHeight - 212)}
 function daySummaryHTML(rs,dateStr){
-  var bN=0,bL=0,bR=0,bMin=0,fN=0,fMl=0,sN=0,sMl=0,slMin=0,napMin=0,poop=0,pee=0,vit=0,pro=0,bath=0,wt=null;
+  var bN=0,bL=0,bR=0,bMin=0,fN=0,fMl=0,boN=0,boMl=0,sN=0,sMl=0,slMin=0,napMin=0,poop=0,pee=0,vit=0,pro=0,bath=0,wt=null;
   rs.forEach(function(r){
     if(r.type==='sleep'){var ov=sleepOverlapMin(r,dateStr);if(ov){slMin+=ov;if(isNapRec(r))napMin+=ov}return}
     if(bjDateStr(new Date(r.start_at).getTime())!==dateStr)return;
     var d=r.data||{};
     if(r.type==='feed_breast'){bN++;bL+=(+d.leftMin||0);bR+=(+d.rightMin||0);bMin+=(+d.min||0)}
     if(r.type==='feed_formula'){fN++;fMl+=(+d.ml||0)}
+    if(r.type==='feed_bottle'){boN++;boMl+=(+d.ml||0)}
     if(r.type==='feed_solid'){sN++;sMl+=(+d.ml||0)}
     if(r.type==='diaper_poop')poop++;
     if(r.type==='diaper_pee')pee++;
@@ -562,6 +567,7 @@ function daySummaryHTML(rs,dateStr){
   function mk(bt,l1,l2){return badge(bt)+'<span class="s2">'+l1+(l2?'<br><b>'+l2+'</b>':'')+'</span>'}
   if(bN)out.push(mk('feed_breast',bN+'次',(bL+bMin)+'/'+bR+'分'));
   if(fN)out.push(mk('feed_formula',fN+'次',fMl+'ml'));
+  if(boN)out.push(mk('feed_bottle',boN+'次',boMl+'ml'));
   if(sN)out.push(mk('feed_solid',sN+'次',sMl?sMl+'ml':''));
   if(slMin)out.push(mk('sleep',durTxt5(slMin),napMin?'小觉'+durTxt5(napMin):''));
   if(poop)out.push(mk('diaper_poop',poop+'次',''));
@@ -787,7 +793,8 @@ function renderSum(){
       if(ymdUtc(ds)>ymdUtc(ystF))return;
       var f=0,s2=0,bm=0,any=false;
       rs.forEach(function(r){if(!inDay(r,ds))return;var d=r.data||{};
-        if(r.type==='feed_formula'){f+=(+d.ml||0);any=true}
+        // 「平均奶」= 配方奶 + 瓶喂母乳，都是瓶子里进肚的奶量（挤奶 feed_pump 不算，那是产出不是摄入）
+        if(r.type==='feed_formula'||r.type==='feed_bottle'){f+=(+d.ml||0);any=true}
         if(r.type==='feed_solid'){s2+=(+d.ml||0);any=true}
         if(r.type==='feed_breast'){bm+=(+d.leftMin||0)+(+d.rightMin||0)+(+d.min||0);any=true}});
       if(any){fA.push(f);sA.push(s2);bA.push(bm)}
@@ -798,17 +805,18 @@ function renderSum(){
       h+=kindHTML(rs,days);
     }else if(state.sum.feedMode==='time'){
       h+=gridHTML(rs,{h:sleepH(),overlay:feedAvg,types:FEEDT,sleep:false,counts:function(ds){
-        var b=0,f=0,s=0;rs.forEach(function(r){if(!inDay(r,ds))return;if(r.type==='feed_breast')b++;if(r.type==='feed_formula')f++;if(r.type==='feed_solid')s++});
-        var o=[];if(b)o.push('<span style="color:#f27ba3">●</span><b>'+b+'次</b>');if(f)o.push('<span style="color:#f5a623">●</span><b>'+f+'次</b>');if(s)o.push('<span style="color:#8cc63e">●</span><b>'+s+'次</b>');
+        var b=0,f=0,s=0,bo=0;rs.forEach(function(r){if(!inDay(r,ds))return;if(r.type==='feed_breast')b++;if(r.type==='feed_formula')f++;if(r.type==='feed_bottle')bo++;if(r.type==='feed_solid')s++});
+        var o=[];if(b)o.push('<span style="color:#f27ba3">●</span><b>'+b+'次</b>');if(f)o.push('<span style="color:#f5a623">●</span><b>'+f+'次</b>');if(bo)o.push('<span style="color:#d4b23c">●</span><b>'+bo+'次</b>');if(s)o.push('<span style="color:#8cc63e">●</span><b>'+s+'次</b>');
         return o.join('<br>')||'—'}});
     }else{
       var rows=[['feed_breast',function(ds){var n=0,L=0,R=0,M=0;rs.forEach(function(r){if(!inDay(r,ds)||r.type!=='feed_breast')return;var d=r.data||{};n++;L+=(+d.leftMin||0);R+=(+d.rightMin||0);M+=(+d.min||0)});return n?(n+'次<br>左<b>'+(L+M)+'</b>分<br>右<b>'+R+'</b>分'):'0次'}],
                 ['feed_formula',function(ds){var n=0,ml=0;rs.forEach(function(r){if(!inDay(r,ds)||r.type!=='feed_formula')return;n++;ml+=(+(r.data||{}).ml||0)});return n?(n+'次<br><b>'+ml+'ml</b>'):'0次'}],
+                ['feed_bottle',function(ds){var n=0,ml=0;rs.forEach(function(r){if(!inDay(r,ds)||r.type!=='feed_bottle')return;n++;ml+=(+(r.data||{}).ml||0)});return n?(n+'次<br><b>'+ml+'ml</b>'):'0次'}],
                 ['feed_solid',function(ds){var n=0,ml=0;rs.forEach(function(r){if(!inDay(r,ds)||r.type!=='feed_solid')return;n++;ml+=(+(r.data||{}).ml||0)});return n?(n+'次<br><b>'+ml+'ml</b>'):'0次'}]];
       h+='<div class="qtable">';
       rows.forEach(function(row){h+='<div class="qrow"><span class="qic">'+badge(row[0])+'</span>';days.forEach(function(ds){h+='<div class="qcell">'+row[1](ds)+'</div>'});h+='</div>'});
       h+='</div>';
-      var COLOR={feed_formula:'#f5a623',feed_solid:'#8cc63e',water:'#54b8e0',drink:'#54b8e0'};
+      var COLOR={feed_formula:'#f5a623',feed_bottle:'#d4b23c',feed_solid:'#8cc63e',water:'#54b8e0',drink:'#54b8e0'};
       var daySegs=days.map(function(ds){
         var segs=[];rs.forEach(function(r){if(!inDay(r,ds))return;var ml=+((r.data||{}).ml)||0;if(!ml)return;
           if(COLOR[r.type])segs.push({ml:ml,c:COLOR[r.type],t:new Date(r.start_at).getTime()})});
@@ -825,7 +833,7 @@ function renderSum(){
         h+='</div></div>';
       });
       h+='</div><div class="daylabs" style="padding-left:34px">'+days.map(function(ds){var dow=new Date(ymdUtc(ds)).getUTCDay();return '<div class="daylab'+(dow===6?' sat':'')+(dow===0?' sun':'')+'">'+mdLabel(ds)+'</div>'}).join('')+'</div>';
-      h+='<div class="legend"><span class="lg"><i style="background:#f5a623"></i>配方奶</span><span class="lg"><i style="background:#8cc63e"></i>辅食</span><span class="lg"><i style="background:#54b8e0"></i>水/饮料</span></div>';
+      h+='<div class="legend"><span class="lg"><i style="background:#f5a623"></i>配方奶</span><span class="lg"><i style="background:#d4b23c"></i>瓶喂母乳</span><span class="lg"><i style="background:#8cc63e"></i>辅食</span><span class="lg"><i style="background:#54b8e0"></i>水/饮料</span></div>';
     }
     if(state.sum.feedMode==='amount'&&fA.length){
       h+='<div class="legend" style="padding-top:8px">平均：<span style="color:#f5a623;font-weight:600">奶 '+avF(fA)+'ml</span>　<span style="color:#8cc63e;font-weight:600">辅食 '+avF(sA)+'ml</span>　<span style="color:#f27ba3;font-weight:600">母乳 '+avF(bA)+'分</span></div>';
@@ -1730,7 +1738,7 @@ function editTime(rec){
 function editDetail(rec){
   var d=rec.data||{},t=rec.type,patch=null;
   function num(msg,cur){var v=prompt(msg,cur==null?'':cur);if(v===null)return null;var n=parseFloat(v);return isNaN(n)?null:n}
-  if(t==='feed_formula'||t==='water'||t==='drink'){var ml=num('毫升数',d.ml);if(ml===null)return;patch={ml:ml}}
+  if(t==='feed_formula'||t==='feed_bottle'||t==='water'||t==='drink'){var ml=num('毫升数',d.ml);if(ml===null)return;patch={ml:ml}}
   else if(t==='feed_breast'){var L=num('左边分钟',d.leftMin||d.min||0);if(L===null)return;var R=num('右边分钟',d.rightMin||0);if(R===null)return;patch={leftMin:L,rightMin:R,min:0}}
   else if(t==='feed_solid'){var fo=prompt('吃了什么',d.food||'');if(fo===null)return;var sml=num('毫升数（没有填0）',d.ml||0);if(sml===null)return;patch={food:fo,ml:sml}}
   else if(t==='sleep'){var du=num('睡眠时长（分钟）',d.durationMin||'');if(du===null)return;patch={durationMin:du,open:false}}
