@@ -395,6 +395,13 @@ function mdLabel(s){var p=s.split('-');return (+p[1])+'月'+(+p[2])+'日'}
    再按睡眠日（19:00 → 次日 19:00）分组；组内从第一段起往后合并，直到出现 ≥90 分钟的
    清醒缺口，之前的都算夜觉，之后的都算小觉。不依赖固定钟点，宝宝作息往后移也不用改代码。
 
+   ⚠️ 但「醒足 90 分钟」单独用会错（2026-08-14 修）：7/21 那晚 00:40 醒、闹到 03:40 才睡，
+   那个 180 分钟的缺口把 03:40–07:46 判成了小觉——半夜三点不可能天亮。
+   所以加一条前提：**只有落在白天时段（06:00–19:00）的那次再入睡才有资格结束夜觉**。
+   凌晨再睡多晚都还是夜觉，傍晚 19 点前的猫觉也不会把当晚的正觉挤成小觉。
+   6 点这个界是数据挑的：近 120 天里「醒足 90 分钟后再睡」的时间点，要么在 0–5 点（13 次，
+   全是夜里闹），要么在 7–8 点（26 次，全是晨觉），6 点整一次都没有，是条天然的缝。
+
    判定只做一次，各视图按各自的窗口去截：
      sleepDaySplit —— 睡眠日 19:00→19:00，一根柱子 = 一个完整夜觉 + 那天的小觉
      sleepNatDay   —— 自然日 0:00→24:00，「量」和状态牌用，夜觉仍会被午夜劈成两截，
@@ -403,8 +410,10 @@ function mdLabel(s){var p=s.split('-');return (+p[1])+'月'+(+p[2])+'日'}
    这个改动买的是「夜觉」这个数字本身，不是精度。
 
    数据边界：Edge Function 已经从「周一 00:00 − 24h」开始拉，周一那格的前夜数据够用，后端不用改。*/
-var SDAY_H=19, WAKE_GAP=90;
+var SDAY_H=19, WAKE_GAP=90, MORNING_H=6;
 function sdayWin(ds){var a=dayStartMs(ds)-(24-SDAY_H)*3600e3;return [a,a+86400e3]}
+// 白天时段：只有这个区间里的再入睡才有资格宣告夜觉结束
+function sdayDaytime(ms){var h=bj(ms).getUTCHours();return h>=MORNING_H&&h<SDAY_H}
 function sdayKey(ms){var b=bj(ms);return b.getUTCHours()>=SDAY_H?shiftDate(bjDateStr(ms),1):bjDateStr(ms)}
 function sdayLabel(ds){return (+shiftDate(ds,-1).split('-')[2])+'日晚<br>→'+(+ds.split('-')[2])+'日'}
 
@@ -433,7 +442,7 @@ function sleepSegs(rs){
     if(k2!==key){key=k2;started=false;ended=false;prevEnd=0}
     if(ended){s.night=false;return}
     if(!started){started=true;s.night=true;prevEnd=s.b;return}
-    if((s.a-prevEnd)/60000>=WAKE_GAP){ended=true;s.night=false;return}
+    if((s.a-prevEnd)/60000>=WAKE_GAP&&sdayDaytime(s.a)){ended=true;s.night=false;return}
     s.night=true;prevEnd=s.b;
   });
   _ssRs=rs;_ssKey=k;_ssOut=mg;return mg;
