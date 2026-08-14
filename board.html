@@ -109,20 +109,10 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .sblue{position:absolute;inset:0;background:var(--night);border-radius:8px 8px 0 0}
 .sorange{position:absolute;bottom:0;left:16%;width:100%;background:var(--nap);border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:#fff;text-align:center;line-height:1.45;text-shadow:0 0 2px rgba(0,0,0,.2)}
 .gridwrap{position:relative;background:#fff;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:6px 4px 4px 26px;overflow:hidden}
-/* 睡眠日：横条时间轴。刻意跟「时间」「量」两张竖图长得不一样，一眼能分辨 */
-.swrap{background:#fff;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:12px 12px 8px}
-.srow{display:flex;align-items:center;gap:7px;margin-bottom:6px}
-.slab{width:50px;flex:none;font-size:10.5px;color:var(--sub);text-align:right;line-height:1.3}
-.slab b{display:block;color:var(--ink);font-weight:600}
-.strack{flex:1;position:relative;background:var(--line);border-radius:4px;overflow:hidden}
-.stick{position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,.05)}
-.sseg{position:absolute;top:0;bottom:0;border-radius:3px}
-.stot{width:56px;flex:none;font-size:10.5px;font-weight:600;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
-.stot span{display:block;font-size:9px;font-weight:400;color:var(--sub)}
-.saxis{display:flex;margin:2px 63px 0 57px;font-size:9px;color:var(--sub)}
-.saxis span{flex:1;text-align:left}
-.slgd{display:flex;align-items:center;gap:5px;margin-top:9px;padding-left:57px;font-size:10.5px;color:var(--sub)}
-.slgd i{display:inline-block;width:14px;height:8px;border-radius:2px}
+/* 睡眠日：竖向时间轴，从上到下 19:00 → 次日 19:00。手机宽度放不下横条（2026-08-14 试过） */
+.sdblk{position:absolute;left:10%;width:80%;border-radius:5px}
+.sdlgd{display:flex;align-items:center;gap:5px;margin:7px 0 0 26px;font-size:10.5px;color:var(--sub)}
+.sdlgd i{display:inline-block;width:14px;height:8px;border-radius:2px}
 .grid{position:relative;display:flex}
 .stripe{position:absolute;top:0;bottom:0;background:#fdf3f7;z-index:0;pointer-events:none}
 .hline{position:absolute;left:0;right:0;border-top:1px dashed #e8e2db;pointer-events:none;z-index:1}
@@ -962,41 +952,41 @@ function renderSum(){
     if(sm==='time'){
       h+='<div style="position:relative">'+avgHtml+gridHTML(rs,{types:[],sleep:true,h:sleepH(),counts:cnt2})+'</div>';
     }else if(sm==='sday'){
-      /* 睡眠日：一行 = 前一晚 19:00 到当天 19:00 的 24 小时横条，蓝＝夜觉、橙＝小觉、
-         留白＝醒着。刻意做成横向，跟「时间」「量」两张竖图一眼能分辨（Celine 2026-08-14）。
-         右端给总时长——这张图要回答的就是「这一觉一共睡了多久」。*/
-      var sd={},sN=[],sP=[];
+      /* 睡眠日：一列 = 一个睡眠日，纵轴从上到下 19:00 → 次日 19:00。
+         蓝＝夜觉、橙＝小觉、留白＝醒着，列脚给总时长。
+         跟「时间」那张同为竖图但锚点不同：0 点锚会把夜觉劈成上下两列，19 点锚让
+         一整夜连成顶部一整条——这正是这个 tab 存在的理由。
+         横条版做过又推翻了（2026-08-14）：手机宽度不够，七行挤成一团。*/
+      var CH=sleepH(),sd={},sN=[],sP=[];
       days.forEach(function(ds){
         sd[ds]=sleepDaySplit(rs,ds);
         if(ymdUtc(ds)<=ymdUtc(yst)&&sd[ds].tot>0){sN.push(sd[ds].night);sP.push(sd[ds].nap)}
       });
-      var RH=Math.max(15,Math.min(30,Math.floor((sleepH()-58)/7)-6));
-      h+='<div class="swrap">';
+      h+='<div class="gridwrap">';
       if(sN.length){
         var mean=function(a){return a.reduce(function(x,y){return x+y},0)/a.length};
-        h+='<div style="text-align:center;font-size:11.5px;color:var(--sub);margin-bottom:10px">'
-          +'夜觉均 <b style="color:var(--ink)">'+durTxt(mean(sN))+'</b> · 小觉均 <b style="color:var(--ink)">'+durTxt(mean(sP))+'</b></div>';
+        h+='<div class="avgfloat"><span class="an">夜觉均 '+durTxt(mean(sN))+'</span><span class="ap">小觉均 '+durTxt(mean(sP))+'</span></div>';
+      }
+      h+='<div class="grid" style="height:'+CH+'px">';
+      for(var si3=1;si3<7;si3+=2)h+='<div class="stripe" style="left:'+(si3*100/7)+'%;width:'+(100/7)+'%"></div>';
+      for(var k3=0;k3<=24;k3++){
+        var lab3=k3%3===0?'<span class="hlab">'+((19+k3)%24)+'</span>':'';
+        h+='<div class="hline'+(k3%3===0?' h3':'')+'" style="top:'+(k3/24*100)+'%">'+lab3+'</div>';
       }
       days.forEach(function(ds){
-        var s=sd[ds],dow=new Date(ymdUtc(ds)).getUTCDay();
-        var col=dow===6?'#5b8dd8':(dow===0?'#e05c5c':'');
-        h+='<div class="srow"><div class="slab"'+(col?' style="color:'+col+'"':'')+'>'
-          +'<b'+(col?' style="color:'+col+'"':'')+'>'+(+shiftDate(ds,-1).split('-')[2])+'日晚</b>→'+(+ds.split('-')[2])+'日</div>';
-        h+='<div class="strack" style="height:'+RH+'px">';
-        for(var k=3;k<24;k+=3)h+='<div class="stick" style="left:'+(k/24*100)+'%"></div>';
+        h+='<div class="col">';
         sleepDaySegs(rs,ds).forEach(function(g){
-          h+='<div class="sseg" style="left:'+(g.l*100)+'%;width:'+(g.w*100)+'%;background:'+(g.night?'var(--night)':'var(--nap)')+'"></div>';
+          h+='<div class="sdblk" style="top:'+(g.l*100)+'%;height:'+(g.w*100)+'%;background:'+(g.night?'var(--night)':'var(--nap)')+'"></div>';
         });
         h+='</div>';
-        var t=Math.round(s.tot);
-        h+='<div class="stot">'+(t?(Math.floor(t/60)+'小时'+Math.floor(t%60/5)*5+'分'):'—')
-          +(s.wakes?'<span>夜醒'+s.wakes+'次</span>':'')+'</div></div>';
       });
-      h+='<div class="saxis">';
-      for(var ax=0;ax<8;ax++)h+='<span>'+((19+ax*3)%24)+'</span>';
+      h+='</div></div><div class="daylabs">';
+      days.forEach(function(ds){
+        var dow=new Date(ymdUtc(ds)).getUTCDay(),t=Math.round(sd[ds].tot);
+        h+='<div class="daylab'+(dow===6?' sat':'')+(dow===0?' sun':'')+'">'+sdayLabel(ds)
+          +'<div class="cnt">'+(t?('<b>'+Math.floor(t/60)+'小时</b><br><b>'+Math.floor(t%60/5)*5+'分钟</b>'):'—')+'</div></div>'});
       h+='</div>';
-      h+='<div class="slgd"><i style="background:var(--night)"></i>夜觉<i style="background:var(--nap);margin-left:6px"></i>小觉<span style="margin-left:6px">留白＝醒着</span></div>';
-      h+='</div>';
+      h+='<div class="sdlgd"><i style="background:var(--night)"></i>夜觉<i style="background:var(--nap);margin-left:6px"></i>小觉<span style="margin-left:6px">留白＝醒着</span></div>';
     }else{
       var CH=sleepH();
       h+='<div class="gridwrap" style="position:relative;padding:6px 4px 4px 26px">'+avgHtml;
