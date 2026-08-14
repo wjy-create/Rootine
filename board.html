@@ -109,6 +109,20 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .sblue{position:absolute;inset:0;background:var(--night);border-radius:8px 8px 0 0}
 .sorange{position:absolute;bottom:0;left:16%;width:100%;background:var(--nap);border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;color:#fff;text-align:center;line-height:1.45;text-shadow:0 0 2px rgba(0,0,0,.2)}
 .gridwrap{position:relative;background:#fff;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:6px 4px 4px 26px;overflow:hidden}
+/* 睡眠日：横条时间轴。刻意跟「时间」「量」两张竖图长得不一样，一眼能分辨 */
+.swrap{background:#fff;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:12px 12px 8px}
+.srow{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.slab{width:50px;flex:none;font-size:10.5px;color:var(--sub);text-align:right;line-height:1.3}
+.slab b{display:block;color:var(--ink);font-weight:600}
+.strack{flex:1;position:relative;background:var(--line);border-radius:4px;overflow:hidden}
+.stick{position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,.05)}
+.sseg{position:absolute;top:0;bottom:0;border-radius:3px}
+.stot{width:56px;flex:none;font-size:10.5px;font-weight:600;color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+.stot span{display:block;font-size:9px;font-weight:400;color:var(--sub)}
+.saxis{display:flex;margin:2px 63px 0 57px;font-size:9px;color:var(--sub)}
+.saxis span{flex:1;text-align:left}
+.slgd{display:flex;align-items:center;gap:5px;margin-top:9px;padding-left:57px;font-size:10.5px;color:var(--sub)}
+.slgd i{display:inline-block;width:14px;height:8px;border-radius:2px}
 .grid{position:relative;display:flex}
 .stripe{position:absolute;top:0;bottom:0;background:#fdf3f7;z-index:0;pointer-events:none}
 .hline{position:absolute;left:0;right:0;border-top:1px dashed #e8e2db;pointer-events:none;z-index:1}
@@ -381,6 +395,7 @@ function segSums(segs){var L=0,R=0,nw=Date.now();(segs||[]).forEach(function(g){
 function weekday(s){return '日一二三四五六'.charAt(new Date(ymdUtc(s)).getUTCDay())}
 function mdLabel(s){var p=s.split('-');return (+p[1])+'月'+(+p[2])+'日'}
 /* ═══ 睡眠段：全 App 唯一的夜觉/小觉判定口径 ═══
+   ⚠️ 改这一段之前先读 docs/口径_睡眠判读.md（有完整理由、回归基线和边界用例）。
    2026-08-14 重构。此前有两套规则打架：
      旧 isNapRec —— 按开始钟点，6:00–19:00 之间开始的就算小觉；
      睡眠日     —— 按「醒足 90 分钟算天亮」。
@@ -445,6 +460,15 @@ function sleepAgg(rs,w0,w1){
 }
 function sleepDaySplit(rs,ds){var w=sdayWin(ds);return sleepAgg(rs,w[0],w[1])}
 function sleepNatDay(rs,ds){var d0=dayStartMs(ds);return sleepAgg(rs,d0,d0+86400e3)}
+// 睡眠日窗口内的段，位置换算成 0–1 的比例，给横条时间轴画图用
+function sleepDaySegs(rs,ds){
+  var w=sdayWin(ds),out=[];
+  sleepSegs(rs).forEach(function(s){
+    var a=Math.max(s.a,w[0]),b=Math.min(s.b,w[1]);
+    if(b>a)out.push({l:(a-w[0])/86400e3,w:(b-a)/86400e3,night:!!s.night});
+  });
+  return out;
+}
 // 单条记录属于夜觉还是小觉：落在哪个合并段里就跟着它
 function isNightRec(rs,r){
   if(r.type!=='sleep')return false;
@@ -938,42 +962,40 @@ function renderSum(){
     if(sm==='time'){
       h+='<div style="position:relative">'+avgHtml+gridHTML(rs,{types:[],sleep:true,h:sleepH(),counts:cnt2})+'</div>';
     }else if(sm==='sday'){
-      /* 睡眠日：一根柱子 = 前一晚 19:00 到当天 19:00。蓝＝完整夜觉，橙＝当天小觉。
-         沿用「量」那套 sbar/sblue/sorange，形状跟旁边一致，长辈不用重新认图。*/
-      var CH=sleepH(),sd={},sN=[],sP=[];
+      /* 睡眠日：一行 = 前一晚 19:00 到当天 19:00 的 24 小时横条，蓝＝夜觉、橙＝小觉、
+         留白＝醒着。刻意做成横向，跟「时间」「量」两张竖图一眼能分辨（Celine 2026-08-14）。
+         右端给总时长——这张图要回答的就是「这一觉一共睡了多久」。*/
+      var sd={},sN=[],sP=[];
       days.forEach(function(ds){
         sd[ds]=sleepDaySplit(rs,ds);
         if(ymdUtc(ds)<=ymdUtc(yst)&&sd[ds].tot>0){sN.push(sd[ds].night);sP.push(sd[ds].nap)}
       });
-      h+='<div class="gridwrap" style="position:relative;padding:6px 4px 4px 26px">';
+      var RH=Math.max(15,Math.min(30,Math.floor((sleepH()-58)/7)-6));
+      h+='<div class="swrap">';
       if(sN.length){
         var mean=function(a){return a.reduce(function(x,y){return x+y},0)/a.length};
-        h+='<div class="avgfloat"><span class="an">夜觉均 '+durTxt(mean(sN))+'</span><span class="ap">小觉均 '+durTxt(mean(sP))+'</span></div>';
+        h+='<div style="text-align:center;font-size:11.5px;color:var(--sub);margin-bottom:10px">'
+          +'夜觉均 <b style="color:var(--ink)">'+durTxt(mean(sN))+'</b> · 小觉均 <b style="color:var(--ink)">'+durTxt(mean(sP))+'</b></div>';
       }
-      h+='<div style="position:relative;height:'+CH+'px;display:flex">';
-      for(var si3=1;si3<7;si3+=2)h+='<div class="stripe" style="left:'+(si3*100/7)+'%;width:'+(100/7)+'%"></div>';
-      for(var hh3=0;hh3<=24;hh3+=3){
-        h+='<div class="hline h3" style="bottom:'+((hh3/24)*100)+'%;top:auto"><span class="hlab" style="top:-6px">'+hh3+'</span></div>'}
       days.forEach(function(ds){
-        var s=sd[ds],totPx=s.tot/1440*CH,napPx=s.nap/1440*CH;
-        h+='<div class="col" style="position:relative">';
-        if(s.tot>0){
-          h+='<div class="sbar" style="height:'+totPx+'px"><div class="sblue"></div>';
-          if(totPx-napPx>=30){var nm=Math.round(s.night);
-            h+='<div style="position:absolute;top:3px;left:0;right:0;text-align:center;font-size:10px;color:#fff;line-height:1.35;text-shadow:0 0 2px rgba(0,0,0,.25)">'
-              +Math.floor(nm/60)+'小时<br>'+Math.floor(nm%60/5)*5+'分钟'
-              +(s.wakes?'<br><span style="font-size:9px;opacity:.85">夜醒'+s.wakes+'次</span>':'')+'</div>'}
-          if(napPx>0){var pm=Math.round(s.nap);
-            h+='<div class="sorange" style="height:'+napPx+'px">'+(napPx>=34?('<span>'+Math.floor(pm/60)+'小时</span><span>'+Math.floor(pm%60/5)*5+'分钟</span>'):'')+'</div>'}
-          h+='</div>';
-        }
+        var s=sd[ds],dow=new Date(ymdUtc(ds)).getUTCDay();
+        var col=dow===6?'#5b8dd8':(dow===0?'#e05c5c':'');
+        h+='<div class="srow"><div class="slab"'+(col?' style="color:'+col+'"':'')+'>'
+          +'<b'+(col?' style="color:'+col+'"':'')+'>'+(+shiftDate(ds,-1).split('-')[2])+'日晚</b>→'+(+ds.split('-')[2])+'日</div>';
+        h+='<div class="strack" style="height:'+RH+'px">';
+        for(var k=3;k<24;k+=3)h+='<div class="stick" style="left:'+(k/24*100)+'%"></div>';
+        sleepDaySegs(rs,ds).forEach(function(g){
+          h+='<div class="sseg" style="left:'+(g.l*100)+'%;width:'+(g.w*100)+'%;background:'+(g.night?'var(--night)':'var(--nap)')+'"></div>';
+        });
         h+='</div>';
+        var t=Math.round(s.tot);
+        h+='<div class="stot">'+(t?(Math.floor(t/60)+'小时'+Math.floor(t%60/5)*5+'分'):'—')
+          +(s.wakes?'<span>夜醒'+s.wakes+'次</span>':'')+'</div></div>';
       });
-      h+='</div></div><div class="daylabs">';
-      days.forEach(function(ds){
-        var dow=new Date(ymdUtc(ds)).getUTCDay(),t=Math.round(sd[ds].tot);
-        h+='<div class="daylab'+(dow===6?' sat':'')+(dow===0?' sun':'')+'">'+sdayLabel(ds)
-          +'<div class="cnt">'+(t?('<b>'+Math.floor(t/60)+'小时'+Math.floor(t%60/5)*5+'分</b>'):'—')+'</div></div>'});
+      h+='<div class="saxis">';
+      for(var ax=0;ax<8;ax++)h+='<span>'+((19+ax*3)%24)+'</span>';
+      h+='</div>';
+      h+='<div class="slgd"><i style="background:var(--night)"></i>夜觉<i style="background:var(--nap);margin-left:6px"></i>小觉<span style="margin-left:6px">留白＝醒着</span></div>';
       h+='</div>';
     }else{
       var CH=sleepH();
