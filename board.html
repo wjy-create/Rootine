@@ -380,16 +380,78 @@ function weekAge(dateStr){if(!BIRTH)return '';var days=Math.floor((ymdUtc(dateSt
 function segSums(segs){var L=0,R=0,nw=Date.now();(segs||[]).forEach(function(g){var e=g.end||nw;var d=Math.max(0,e-g.start);if(g.s==='L')L+=d;else R+=d});return{L:Math.round(L/60000),R:Math.round(R/60000)}}
 function weekday(s){return '日一二三四五六'.charAt(new Date(ymdUtc(s)).getUTCDay())}
 function mdLabel(s){var p=s.split('-');return (+p[1])+'月'+(+p[2])+'日'}
-// 睡眠按自然日（午夜0点）切分归属；进行中→now，动态计入
-function sleepOverlapMin(r,ds){
- if(r.type!=='sleep')return 0;var d=r.data||{};
- var st=new Date(r.start_at).getTime();
- var en=d.open?Date.now():(d.durationMin?st+d.durationMin*60000:null);
- if(!en)return 0;
- var d0=dayStartMs(ds),d1=d0+86400e3;
- return Math.max(0,(Math.min(en,d1)-Math.max(st,d0))/60000);
+/* ═══ 睡眠段：全 App 唯一的夜觉/小觉判定口径 ═══
+   2026-08-14 重构。此前有两套规则打架：
+     旧 isNapRec —— 按开始钟点，6:00–19:00 之间开始的就算小觉；
+     睡眠日     —— 按「醒足 90 分钟算天亮」。
+   同一个清晨 6:30 的回笼觉在两张图里归属不同，是个迟早咬人的坑。现在统一到后者。
+
+   规则：先把所有睡眠记录并成互不重叠的段（补录重复、跨设备重记会造成同一段睡两遍），
+   再按睡眠日（19:00 → 次日 19:00）分组；组内从第一段起往后合并，直到出现 ≥90 分钟的
+   清醒缺口，之前的都算夜觉，之后的都算小觉。不依赖固定钟点，宝宝作息往后移也不用改代码。
+
+   判定只做一次，各视图按各自的窗口去截：
+     sleepDaySplit —— 睡眠日 19:00→19:00，一根柱子 = 一个完整夜觉 + 那天的小觉
+     sleepNatDay   —— 自然日 0:00→24:00，「量」和状态牌用，夜觉仍会被午夜劈成两截，
+                      但至少劈的是同一个夜觉，蓝橙配色跟别处一致
+   注意：睡眠日口径下日总时长几乎不变（近 13 天里 11 天差 <0.5h），
+   这个改动买的是「夜觉」这个数字本身，不是精度。
+
+   数据边界：Edge Function 已经从「周一 00:00 − 24h」开始拉，周一那格的前夜数据够用，后端不用改。*/
+var SDAY_H=19, WAKE_GAP=90;
+function sdayWin(ds){var a=dayStartMs(ds)-(24-SDAY_H)*3600e3;return [a,a+86400e3]}
+function sdayKey(ms){var b=bj(ms);return b.getUTCHours()>=SDAY_H?shiftDate(bjDateStr(ms),1):bjDateStr(ms)}
+function sdayLabel(ds){return (+shiftDate(ds,-1).split('-')[2])+'日晚<br>→'+(+ds.split('-')[2])+'日'}
+
+// 同一次渲染内只算一遍。缓存带分钟桶：进行中的睡眠 en=now，跨分钟要重算才会继续长
+var _ssKey=null,_ssOut=null,_ssRs=null;
+function sleepSegs(rs){
+  var k=Math.floor(Date.now()/60000);
+  if(_ssRs===rs&&_ssKey===k)return _ssOut;
+  var segs=[];
+  rs.forEach(function(r){
+    if(r.type!=='sleep')return;var d=r.data||{};
+    var st=new Date(r.start_at).getTime();
+    var en=d.open?Date.now():(d.durationMin?st+d.durationMin*60000:null);
+    if(en&&en>st)segs.push({a:st,b:en});
+  });
+  segs.sort(function(x,y){return x.a-y.a});
+  var mg=[];
+  segs.forEach(function(s){
+    var l=mg[mg.length-1];
+    if(l&&s.a<=l.b){if(s.b>l.b)l.b=s.b;return}   // 重叠即合并
+    mg.push({a:s.a,b:s.b});
+  });
+  var key=null,started=false,ended=false,prevEnd=0;
+  mg.forEach(function(s){
+    var k2=sdayKey(s.a);
+    if(k2!==key){key=k2;started=false;ended=false;prevEnd=0}
+    if(ended){s.night=false;return}
+    if(!started){started=true;s.night=true;prevEnd=s.b;return}
+    if((s.a-prevEnd)/60000>=WAKE_GAP){ended=true;s.night=false;return}
+    s.night=true;prevEnd=s.b;
+  });
+  _ssRs=rs;_ssKey=k;_ssOut=mg;return mg;
 }
-function isNapRec(r){var h=bj(new Date(r.start_at).getTime()).getUTCHours();return h>=6&&h<19}
+function sleepAgg(rs,w0,w1){
+  var night=0,nap=0,nseg=0;
+  sleepSegs(rs).forEach(function(s){
+    var a=Math.max(s.a,w0),b=Math.min(s.b,w1);
+    if(b<=a)return;
+    var m=(b-a)/60000;
+    if(s.night){night+=m;nseg++}else nap+=m;
+  });
+  return {night:night,nap:nap,wakes:Math.max(0,nseg-1),tot:night+nap};
+}
+function sleepDaySplit(rs,ds){var w=sdayWin(ds);return sleepAgg(rs,w[0],w[1])}
+function sleepNatDay(rs,ds){var d0=dayStartMs(ds);return sleepAgg(rs,d0,d0+86400e3)}
+// 单条记录属于夜觉还是小觉：落在哪个合并段里就跟着它
+function isNightRec(rs,r){
+  if(r.type!=='sleep')return false;
+  var st=new Date(r.start_at).getTime(),segs=sleepSegs(rs);
+  for(var i=0;i<segs.length;i++)if(st>=segs[i].a&&st<segs[i].b)return !!segs[i].night;
+  return false;
+}
 
 function breastPink(d){
   if(d.open){var s=segSums(d.segs);return '喂奶中… 左'+s.L+'分 右'+s.R+'分'}
@@ -465,9 +527,10 @@ function statCards(rs){
   var now=Date.now(),today=todayStr(),h='';
   function pick(types){var b=null;rs.forEach(function(r){if(types.indexOf(r.type)<0)return;var t=new Date(r.start_at).getTime();if(!b||t>b._t){r._t=t;b=r}});return b}
   // 今日累计
-  var tF=0,tBot=0,tS=0,tSml=0,tB=0,tBL=0,tBR=0,nPoop=0,slMin=0,napMin=0;
+  var tF=0,tBot=0,tS=0,tSml=0,tB=0,tBL=0,tBR=0,nPoop=0;
+  var sag=sleepNatDay(rs,today),slMin=sag.tot,napMin=sag.nap;
   rs.forEach(function(r){
-    if(r.type==='sleep'){var ov=sleepOverlapMin(r,today);if(ov){slMin+=ov;if(isNapRec(r))napMin+=ov}return}
+    if(r.type==='sleep')return;                       // 睡眠已由 sleepNatDay 统一算过
     if(bjDateStr(new Date(r.start_at).getTime())!==today)return;
     var d=r.data||{};
     if(r.type==='feed_formula')tF+=(+d.ml||0);
@@ -549,9 +612,10 @@ function renderStat(){
 function gridH(){return Math.max(400, window.innerHeight - document.getElementById('hdr').offsetHeight - 168)}
 function sleepH(){return Math.max(340, window.innerHeight - document.getElementById('hdr').offsetHeight - 212)}
 function daySummaryHTML(rs,dateStr){
-  var bN=0,bL=0,bR=0,bMin=0,fN=0,fMl=0,boN=0,boMl=0,sN=0,sMl=0,slMin=0,napMin=0,poop=0,pee=0,vit=0,pro=0,bath=0,wt=null;
+  var bN=0,bL=0,bR=0,bMin=0,fN=0,fMl=0,boN=0,boMl=0,sN=0,sMl=0,poop=0,pee=0,vit=0,pro=0,bath=0,wt=null;
+  var sag=sleepNatDay(rs,dateStr),slMin=sag.tot,napMin=sag.nap;
   rs.forEach(function(r){
-    if(r.type==='sleep'){var ov=sleepOverlapMin(r,dateStr);if(ov){slMin+=ov;if(isNapRec(r))napMin+=ov}return}
+    if(r.type==='sleep')return;                       // 同上，走统一口径
     if(bjDateStr(new Date(r.start_at).getTime())!==dateStr)return;
     var d=r.data||{};
     if(r.type==='feed_breast'){bN++;bL+=(+d.leftMin||0);bR+=(+d.rightMin||0);bMin+=(+d.min||0)}
@@ -642,7 +706,7 @@ function sleepBlocks(rs){
     var st=new Date(r.start_at).getTime();
     var en=d.open?now:(d.durationMin?st+d.durationMin*60000:null);
     if(!en)return;
-    var cls=isNapRec(r)?'var(--nap)':'var(--night)';
+    var cls=isNightRec(rs,r)?'var(--night)':'var(--nap)';
     days.forEach(function(ds,i){
       var d0=dayStartMs(ds),d1=d0+86400e3;
       var a=Math.max(st,d0),b=Math.min(en,d1);
@@ -856,7 +920,7 @@ function renderSum(){
     days.forEach(function(ds){
       if(ymdUtc(ds)>ymdUtc(yst))return;
       var t=0,np=0;
-      rs.forEach(function(r){if(r.type!=='sleep')return;var ov=sleepOverlapMin(r,ds);if(!ov)return;t+=ov;if(isNapRec(r))np+=ov});
+      var a=sleepNatDay(rs,ds);t=a.tot;np=a.nap;
       if(t>0){tots.push(t);naps.push(np)}
     });
     var avgHtml='';
@@ -866,13 +930,51 @@ function renderSum(){
       avgHtml='<div class="avgfloat"><span class="an">平均 '+durTxt(avgT)+'</span><span class="ap">平均 '+durTxt(avgN)+'</span></div>';
     }
     var sm=state.sum.sleepMode||'time';
-    h+='<div class="ctlrow"><span></span><div class="seg2"><button data-sm="time" class="'+(sm==='time'?'on':'')+'">时间</button><button data-sm="amount" class="'+(sm==='amount'?'on':'')+'">量</button></div><span></span></div>';
-    var dayTot=function(ds){var t=0;rs.forEach(function(r){t+=sleepOverlapMin(r,ds)});return t};
+    h+='<div class="ctlrow"><span></span><div class="seg2"><button data-sm="time" class="'+(sm==='time'?'on':'')+'">时间</button><button data-sm="amount" class="'+(sm==='amount'?'on':'')+'">量</button><button data-sm="sday" class="'+(sm==='sday'?'on':'')+'">睡眠日</button></div><span></span></div>';
+    var dayTot=function(ds){return sleepNatDay(rs,ds).tot};
     var cnt2=function(ds){var t=Math.round(dayTot(ds));if(!t)return '—';
       var th=Math.floor(t/60),tm=Math.floor(t%60/5)*5;
       return '<b>'+th+'小时</b><br><b>'+tm+'分钟</b>'};
     if(sm==='time'){
       h+='<div style="position:relative">'+avgHtml+gridHTML(rs,{types:[],sleep:true,h:sleepH(),counts:cnt2})+'</div>';
+    }else if(sm==='sday'){
+      /* 睡眠日：一根柱子 = 前一晚 19:00 到当天 19:00。蓝＝完整夜觉，橙＝当天小觉。
+         沿用「量」那套 sbar/sblue/sorange，形状跟旁边一致，长辈不用重新认图。*/
+      var CH=sleepH(),sd={},sN=[],sP=[];
+      days.forEach(function(ds){
+        sd[ds]=sleepDaySplit(rs,ds);
+        if(ymdUtc(ds)<=ymdUtc(yst)&&sd[ds].tot>0){sN.push(sd[ds].night);sP.push(sd[ds].nap)}
+      });
+      h+='<div class="gridwrap" style="position:relative;padding:6px 4px 4px 26px">';
+      if(sN.length){
+        var mean=function(a){return a.reduce(function(x,y){return x+y},0)/a.length};
+        h+='<div class="avgfloat"><span class="an">夜觉均 '+durTxt(mean(sN))+'</span><span class="ap">小觉均 '+durTxt(mean(sP))+'</span></div>';
+      }
+      h+='<div style="position:relative;height:'+CH+'px;display:flex">';
+      for(var si3=1;si3<7;si3+=2)h+='<div class="stripe" style="left:'+(si3*100/7)+'%;width:'+(100/7)+'%"></div>';
+      for(var hh3=0;hh3<=24;hh3+=3){
+        h+='<div class="hline h3" style="bottom:'+((hh3/24)*100)+'%;top:auto"><span class="hlab" style="top:-6px">'+hh3+'</span></div>'}
+      days.forEach(function(ds){
+        var s=sd[ds],totPx=s.tot/1440*CH,napPx=s.nap/1440*CH;
+        h+='<div class="col" style="position:relative">';
+        if(s.tot>0){
+          h+='<div class="sbar" style="height:'+totPx+'px"><div class="sblue"></div>';
+          if(totPx-napPx>=30){var nm=Math.round(s.night);
+            h+='<div style="position:absolute;top:3px;left:0;right:0;text-align:center;font-size:10px;color:#fff;line-height:1.35;text-shadow:0 0 2px rgba(0,0,0,.25)">'
+              +Math.floor(nm/60)+'小时<br>'+Math.floor(nm%60/5)*5+'分钟'
+              +(s.wakes?'<br><span style="font-size:9px;opacity:.85">夜醒'+s.wakes+'次</span>':'')+'</div>'}
+          if(napPx>0){var pm=Math.round(s.nap);
+            h+='<div class="sorange" style="height:'+napPx+'px">'+(napPx>=34?('<span>'+Math.floor(pm/60)+'小时</span><span>'+Math.floor(pm%60/5)*5+'分钟</span>'):'')+'</div>'}
+          h+='</div>';
+        }
+        h+='</div>';
+      });
+      h+='</div></div><div class="daylabs">';
+      days.forEach(function(ds){
+        var dow=new Date(ymdUtc(ds)).getUTCDay(),t=Math.round(sd[ds].tot);
+        h+='<div class="daylab'+(dow===6?' sat':'')+(dow===0?' sun':'')+'">'+sdayLabel(ds)
+          +'<div class="cnt">'+(t?('<b>'+Math.floor(t/60)+'小时'+Math.floor(t%60/5)*5+'分</b>'):'—')+'</div></div>'});
+      h+='</div>';
     }else{
       var CH=sleepH();
       h+='<div class="gridwrap" style="position:relative;padding:6px 4px 4px 26px">'+avgHtml;
@@ -881,8 +983,7 @@ function renderSum(){
       for(var hh2=0;hh2<=24;hh2+=3){var bt=(hh2/24)*100;
         h+='<div class="hline h3" style="bottom:'+bt+'%;top:auto"><span class="hlab" style="top:-6px">'+hh2+'</span></div>'}
       days.forEach(function(ds,i){
-        var tot=dayTot(ds),np=0;
-        rs.forEach(function(r){if(r.type==='sleep'&&isNapRec(r))np+=sleepOverlapMin(r,ds)});
+        var a2=sleepNatDay(rs,ds),tot=a2.tot,np=a2.nap;
         var totPx=tot/1440*CH,napPx=np/1440*CH;
         h+='<div class="col" style="position:relative">';
         if(tot>0){h+='<div class="sbar" style="height:'+totPx+'px"><div class="sblue"></div>';
