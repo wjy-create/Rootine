@@ -171,6 +171,11 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .shbtn{display:block;width:100%;padding:15px;border:none;background:none;font-size:16px;color:var(--ink);border-bottom:1px solid var(--line)}
 .shbtn:last-child{border-bottom:none}
 .shbtn.danger{color:#e05c5c}
+/* 改判类型的类型格子（v16）。做成一屏能扫完的九宫格，不用 prompt 让她敲编号 */
+.rtgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px;max-height:46vh;overflow-y:auto;border-bottom:1px solid var(--line)}
+.rtcell{padding:9px 2px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:13px;color:var(--ink);line-height:1.35}
+.rtcell:active{background:var(--pinklite);border-color:var(--pink)}
+.rtcell.cur{opacity:.35}
 /* 技能树 */
 #skillview{display:none;padding:10px 10px 16px}
 .dimtabs{display:flex;gap:6px;margin:2px 2px 10px;flex-wrap:wrap}
@@ -819,13 +824,26 @@ function kindHTML(rs,days){
       unknown[w]=(unknown[w]||0)+1;
     });
   });
-  var iron=0;['red_meat','liver','fish'].forEach(function(t){Object.keys(byDay).forEach(function(d){iron+=byDay[d][t]||0})});
+  /* ① 铁摄入判读（12 月龄铁需求高峰，这是这张页面最该先说的一句话）
+     2026-08-14 修：以前绿灯挂在**顿数**上，同一天吃两顿肉末就亮 ✅，其余六天零摄入完全看不出来。
+     一个数字被要求同时回答「够不够量」和「够不够规律」，于是两个都答不准。
+     现在绿灯挂**天数**（规律），顿数降级成括号里的副标题（量）。日历格子里的每日顿数不动，那格本来就该显示顿数。
+     对照口径也换了：旧文案写「达到每周 2–3 次的建议」是错的——那个「次」指的是顿不是天，
+     而且周频只是「红肉这个品类多久轮一次」，对 12 月龄本身太松。
+     指南口径是每天 1 个蛋 + 50–75g 肉禽鱼，所以参照物应该是「每天」。
+     IRON_OK_DAYS 是绿灯门槛，觉得松紧不对就改这一个数。*/
+  var IRON_OK_DAYS=5,ironMeals=0,ironDays=0;
+  days.forEach(function(ds){
+    var n=0;['red_meat','liver','fish'].forEach(function(t){n+=byDay[ds][t]||0});
+    if(n>0)ironDays++;
+    ironMeals+=n;
+  });
+  var ironTail=' <b>'+ironDays+' 天</b>有动物性铁来源（共 '+ironMeals+' 顿）';
   var h='';
-  // ① 铁摄入判读（12 月龄铁需求高峰，这是这张页面最该先说的一句话）
   if(!nSolid)h+='<div class="kbar none">本周还没有辅食记录</div>';
-  else if(iron===0)h+='<div class="kbar bad">⚠️ 本周<b>红肉 / 肝脏 / 鱼虾 0 次</b> · 12 月龄是铁需求高峰，胎里带的储备 4–6 个月就耗尽了</div>';
-  else if(iron<2)h+='<div class="kbar warn">本周动物性铁来源 <b>'+iron+' 次</b> · 建议每周红肉 2–3 次 + 肝脏 1 次</div>';
-  else h+='<div class="kbar ok">本周动物性铁来源 <b>'+iron+' 次</b> ✅ 达到每周 2–3 次的建议</div>';
+  else if(ironDays===0)h+='<div class="kbar bad">⚠️ 本周<b>红肉 / 肝脏 / 鱼虾 0 天</b> · 12 月龄是铁需求高峰，胎里带的储备 4–6 个月就耗尽了</div>';
+  else if(ironDays<IRON_OK_DAYS)h+='<div class="kbar warn">本周'+ironTail+' · 12 月龄的参考口径是每天 1 个蛋 + 50–75g 肉禽鱼</div>';
+  else h+='<div class="kbar ok">本周'+ironTail+' ✅</div>';
   // ② 类别 × 7 天
   h+='<div class="qtable">';
   TAGS.forEach(function(t){
@@ -1871,17 +1889,59 @@ function editDetail(rec){
   else{var nt=prompt('备注内容',rec.note||'');if(nt===null)return;post({action:'update',id:rec.id,note:nt},afterEdit);return}
   post({action:'update',id:rec.id,dataPatch:patch},afterEdit);
 }
+/* ── v16 改判类型 + 顺手学词 ──────────────────────────────
+   起因：08-17 外婆说「拉屎了」被听写写成「那是了」，落成 note。当时这里只有
+   「改时间/改内容/删除」，只能删了重说——人工修复没留下任何痕迹，同样的错还会再犯。
+   现在改判完会问一句「她当时说的其实是？」，答了就写进 speak_alias，下次同样的音自动对。
+   留空只改判不学词：猜错了写进词典是负资产。 */
+var RETYPES=['diaper_poop','diaper_pee','feed_formula','feed_breast','feed_solid','water',
+  'sleep','walk','bath','vitamin','probiotic','medicine','temp','hospital','vaccine',
+  'cough','vomit','rash','injury','growth','achievement','note'];
+/* sleep 在 LABEL 里没有（时间轴上走「睡觉」那条特殊渲染路径），这里就近补一个，
+   不去动 LABEL——那张表别处也在用，加键有连带风险 */
+var RTLABEL={sleep:'睡觉'};
+function rtName(t){return RTLABEL[t]||LABEL[t]||t}
+function retypeRec(rec,label){
+  var sh=document.getElementById('sheet');
+  var cells=RETYPES.map(function(t){
+    return '<button class="rtcell'+(t===rec.type?' cur':'')+'" data-t="'+t+'"'+(t===rec.type?' disabled':'')+'>'+esc(rtName(t))+'</button>';
+  }).join('');
+  sh.innerHTML='<div class="shhead">这条其实是什么？<br><span style="opacity:.55;font-size:.85em">现在记的是「'+esc(label)+'」'+(rec.note?' · 原话“'+esc(rec.note)+'”':'')+'</span></div>'+
+    '<div class="rtgrid">'+cells+'</div>'+
+    '<button class="shbtn" id="rtCancel">取消</button>';
+  document.getElementById('rtCancel').onclick=closeSheet;
+  Array.prototype.forEach.call(sh.querySelectorAll('.rtcell'),function(b){
+    b.onclick=function(){
+      var t=b.getAttribute('data-t');
+      var learn=null;
+      /* 只有语音记录才值得学词：手动建的记录没有「听错」这回事 */
+      if(rec.data&&rec.data.src==='speak'&&rec.note){
+        var co=prompt('听写记成了「'+rec.note+'」。\n她当时说的其实是？（写了就记进纠错词典，下次自动认；留空=只改这一条）','');
+        if(co===null)return;
+        co=co.trim();
+        if(co)learn={heard:rec.note,correct:co};
+      }
+      post({action:'retype',id:rec.id,type:t,learn:learn},function(){
+        toast(learn?'已改判 · 词典已记住':'已改判');
+        closeSheet();loadRec();
+        state.sum.data=null;state.mile.data=null;state.growth.data=null;state.vax.data=null;
+      });
+    };
+  });
+}
 function openSheet(rec,label){
   var sh=document.getElementById('sheet');
   var _rt=new Date(rec.start_at).getTime();
   sh.innerHTML='<div class="shhead">'+esc(label)+'<br><span style="opacity:.55;font-size:.85em">'+bjDateStr(_rt)+' '+fmtT(_rt)+'</span>'+(rec.note?'<br>“'+esc(rec.note)+'”':'')+'</div>'+
     '<button class="shbtn" id="shTime">修改日期时间</button>'+
     '<button class="shbtn" id="shDetail">修改内容</button>'+
+    '<button class="shbtn" id="shType">改判类型</button>'+
     '<button class="shbtn danger" id="shDel">删除这条记录</button>'+
     '<button class="shbtn" id="shCancel">取消</button>';
   sh.style.display='block';document.getElementById('sheetbg').style.display='block';
   document.getElementById('shTime').onclick=function(){editTime(rec)};
   document.getElementById('shDetail').onclick=function(){editDetail(rec)};
+  document.getElementById('shType').onclick=function(){retypeRec(rec,label)};
   document.getElementById('shDel').onclick=function(){
     if(!confirm('确定删除？\n'+label))return;
     post({action:'delete',id:rec.id},function(){toast('已删除');closeSheet();loadRec();state.sum.data=null});
