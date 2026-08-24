@@ -173,6 +173,16 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .kt{flex:none;width:62px;font-size:12px;color:var(--sub)}
 .kk{flex:1;display:flex;flex-wrap:wrap;gap:5px}
 .kk i{font-style:normal;font-size:12px;background:var(--pinklite);color:var(--pinktx);border-radius:99px;padding:2px 9px}
+/* 推拿子页。配色一律走变量，夜间态才不会漏出一块白（见 CLAUDE.md「主题」） */
+.tst{display:flex;gap:7px;margin:9px 2px 4px}
+.tsc{flex:1;background:var(--card);border-radius:14px;box-shadow:var(--cardshadow);padding:10px 5px;text-align:center}
+.tsc b{display:block;font-size:19px;font-weight:700;color:var(--pink);line-height:1.3}
+.tsc span{font-size:10.5px;color:var(--sub)}
+.tmlab{flex:none;width:46px;font-size:12px;color:var(--sub)}
+.tmbar{flex:1;height:13px;border-radius:7px;background:var(--progbg);overflow:hidden}
+.tmbar i{display:block;height:100%;border-radius:7px;background:var(--hero)}
+.tmn{flex:none;width:36px;text-align:right;font-size:12px;font-weight:600;color:var(--ink2)}
+.tgap{font-size:11px;color:var(--sub);background:var(--chip);border-radius:99px;padding:1px 8px;margin-left:6px}
 .bars{background:var(--card);border-radius:14px;box-shadow:var(--cardshadow);padding:14px 4px 6px 8px;display:flex;align-items:flex-end;min-height:280px}
 .barcol{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
 .bartot{font-size:10.5px;font-weight:700;margin-bottom:3px}
@@ -368,6 +378,7 @@ html.dark #nightBtn .moon{display:none}
     <button class="stab" data-st="grow">成长曲线</button>
     <button class="stab" data-st="mile">大事记</button>
     <button class="stab" data-st="vax">疫苗</button>
+    <button class="stab" data-st="tuina">推拿</button>
     <button class="stab on" data-st="all">ALL</button>
   </div>
   <div id="sumbar"></div>
@@ -401,7 +412,7 @@ var API_BASE='https://jddtovlvntdglfuezxdq.supabase.co/functions/v1/board';
 var BIRTH=null;
 var state={view:'rec',date:null,data:null,
   sum:{from:null,data:null,sub:'all',feedMode:'amount',showSleep:true,hidden:{}},
-  growth:{data:null,mode:'wh',range:12,view:'chart'},mile:{data:null},vax:{data:null}};
+  growth:{data:null,mode:'wh',range:12,view:'chart'},mile:{data:null},vax:{data:null},tuina:{data:null,at:0}};
 // WHO(2006) 女宝参考带（0–24月，近似 ±2SD）
 var WHO={
  wt:{lo:[2.4,3.2,3.9,4.5,5.0,5.4,5.7,6.0,6.3,6.5,6.7,6.9,7.0,7.2,7.4,7.6,7.7,7.9,8.1,8.2,8.4,8.6,8.7,8.9,9.0],
@@ -1048,6 +1059,10 @@ function renderSum(){
     if(!state.mile.data){h+='<div class="empty">翻开大事记…</div>';loadMile()}
     else{h+=mileHTML();if(Date.now()-(state.mile.at||0)>30e3)loadMile()} // 每次进页先显缓存、后台刷新（语音新记的成就不再漏）
   }
+  if(sub==='tuina'){
+    if(!state.tuina.data){h+='<div class="empty">翻推拿记录…</div>';loadTuina()}
+    else{h+=tuinaHTML();if(Date.now()-(state.tuina.at||0)>30e3)loadTuina()}
+  }
   if(sub==='sleep'){
     var yst=shiftDate(todayStr(),-1),tots=[],naps=[];
     days.forEach(function(ds){
@@ -1190,6 +1205,88 @@ function mileHTML(){
       +'<div class="msd">'+ds.replace(/-/g,'/')+'</div></div>';
   });
   h+='</div>';
+  return h;
+}
+/* ═══ 推拿（摘要二级）═══
+   推拿没有独立 type，寄生在 walk 上。她记的是「出门散步去推拿」——在她脑子里这是
+   同一次外出的两个属性，不是两件互斥的事；所以不把这些记录从散步里拿走，两边都成立。
+   数据没有为它新开后端接口，直接用现成的 ?q= 搜索：note 里那两个字就是真相源。
+   历史 19 条另外补了 data.tuina=true 作显式锚点，两条来源取并集——
+   哪天她改口说「按摩」，标记就是唯一还认得出来的东西。
+   ⚠️ 天花板：?q= 后端 limit 80。眼下 19 条、每周两三次，两年内到不了；
+   真到了页尾会自己喊出来（见 hitCap），那时再开专用端点——不提前造。*/
+function loadTuina(){
+  fetch(API_BASE+'?q='+encodeURIComponent('推拿')+'&token='+encodeURIComponent(TOKEN))
+  .then(function(r){return r.json()}).then(function(d){
+    if(d.ok===false){showErr(d.msg||'加载失败');return}
+    state.tuina.data=d;state.tuina.at=Date.now();
+    if(state.view==='sum'&&state.sum.sub==='tuina')renderSum();
+  }).catch(function(){showErr('网络不通')});
+}
+function tuinaHTML(){
+  var td=state.tuina.data||{},raw=(td.results||[]);
+  var hitCap=raw.length>=80;
+  var rs=raw.filter(function(r){
+    return (r.data&&r.data.tuina===true)||/推拿/.test(r.note||'')||/推拿/.test((r.data&&r.data.note)||'');
+  }).slice().sort(function(a,b){return new Date(a.start_at).getTime()-new Date(b.start_at).getTime()});
+  if(!rs.length)return '<div class="empty">还没有推拿记录<br><span style="font-size:12px">对「记一笔」说「出门推拿了」就会记上</span></div>';
+
+  var today=todayStr();
+  var dayOf=function(r){return bjDateStr(new Date(r.start_at).getTime())};
+  var diff=function(a,b){return Math.round((ymdUtc(b)-ymdUtc(a))/86400e3)};
+  // 一天去两趟也只算一天——她问的是「多久去一次」，同一天两趟不等于频率翻倍
+  var days=[],seen={};
+  rs.forEach(function(r){var d=dayOf(r);if(!seen[d]){seen[d]=1;days.push(d)}});
+  var first=days[0],last=days[days.length-1];
+  var sinceLast=diff(last,today),span=diff(first,today)+1;
+  var gap=days.length>1?(diff(first,last)/(days.length-1)):0;
+  var nMon=days.filter(function(d){return d.slice(0,7)===today.slice(0,7)}).length;
+  var mins=rs.map(function(r){return +((r.data||{}).durationMin)||0}).filter(function(x){return x>0});
+  var avgMin=mins.length?Math.round(mins.reduce(function(a,b){return a+b},0)/mins.length):0;
+
+  var h='';
+  h+='<div class="kbar '+(sinceLast<=3?'ok':(sinceLast<=7?'warn':'none'))+'">上次推拿 <b>'
+    +(sinceLast===0?'就是今天':(sinceLast===1?'昨天':sinceLast+' 天前'))+'</b>（'+mdLabel(last)+'）'
+    +' · 从 '+mdLabel(first)+' 起已经 <b>'+span+' 天</b></div>';
+  h+='<div class="tst">'
+    +'<div class="tsc"><b>'+days.length+'</b><span>总次数</span></div>'
+    +'<div class="tsc"><b>'+nMon+'</b><span>本月</span></div>'
+    +'<div class="tsc"><b>'+(gap?gap.toFixed(1):'—')+'</b><span>平均间隔·天</span></div>'
+    +'<div class="tsc"><b>'+(avgMin||'—')+'</b><span>平均时长·分</span></div>'
+    +'</div>';
+
+  var byMon={},order=[];
+  days.forEach(function(d){var m=d.slice(0,7);if(!byMon[m]){byMon[m]=0;order.push(m)}byMon[m]++});
+  var mx=Math.max.apply(null,order.map(function(m){return byMon[m]}));
+  h+='<div class="kcard"><div class="kh">每月去了几次</div>';
+  order.forEach(function(m){
+    h+='<div class="krow" style="align-items:center"><span class="tmlab">'+(+m.slice(5,7))+' 月</span>'
+      +'<span class="tmbar"><i style="width:'+Math.round(byMon[m]/mx*100)+'%"></i></span>'
+      +'<span class="tmn">'+byMon[m]+' 次</span></div>';
+  });
+  h+='</div>';
+
+  var W=['周日','周一','周二','周三','周四','周五','周六'];
+  h+='<div class="progtxt" style="margin-top:12px">每一次</div><div class="mstl">';
+  var revDays=days.slice().reverse();
+  revDays.forEach(function(d,i){
+    var same=rs.filter(function(r){return dayOf(r)===d});
+    var mn=same.map(function(r){return +((r.data||{}).durationMin)||0}).filter(function(x){return x>0});
+    var by=same.map(function(r){return (r.data||{}).by}).filter(Boolean)[0]||'';
+    var prev=revDays[i+1];
+    h+='<div class="ms"><div class="msdot"></div>'
+      +'<div class="msage">'+d.replace(/-/g,'/')+' · '+W[new Date(ymdUtc(d)).getUTCDay()]+'</div>'
+      +'<div class="mst" style="font-size:14px">'
+        +(mn.length?('出门 <b>'+mn.join(' + ')+'</b> 分钟'):'去了一趟')
+        +(by?'<span class="tgap">'+esc(by)+'</span>':'')
+        +(same.length>1?'<span class="tgap">这天 '+same.length+' 趟</span>':'')
+      +'</div>'
+      +'<div class="msd">'+(prev?('距上次 '+diff(prev,d)+' 天'):'第一次')+'</div></div>';
+  });
+  h+='</div>';
+  h+='<div class="agesrc">'+(hitCap
+    ? '⚠️ 搜索端点一次最多给 80 条，已经取满——更早的推拿可能没算进来，该给它开专用接口了。'
+    : '推拿记在「散步」里（同一次外出的两个属性），所以这里的次数不会从散步统计中减掉。')+'</div>';
   return h;
 }
 document.getElementById('sumview').addEventListener('click',function(e){

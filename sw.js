@@ -4,7 +4,7 @@
 // 入口结构：index.html 是分流页（带 token 跳 board.html），board.html 是主应用，legacy.html 是老版 App。
 // 策略仍是 network-first：先走网络，成功就顺手更新缓存，断网才回落缓存。
 // 改了本文件里的资源清单后，务必把 CACHE 版本号 +1，否则老缓存不会被清掉。
-const CACHE='rootine-v27';
+const CACHE='rootine-v28';
 const ASSETS=['./','index.html','board.html','legacy.html','manifest.webmanifest','icon-180.png','icon-192.png','icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
