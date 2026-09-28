@@ -72,6 +72,9 @@ body{font-family:-apple-system,"PingFang SC",sans-serif;background:var(--bg);col
 .stab.on{background:var(--card);color:var(--pink)}
 #fresh{background:var(--card);padding:2px 12px 6px;font-size:10.5px;color:var(--sub);line-height:1.5;text-wrap:pretty}
 #fresh .stale{color:var(--stale);font-weight:600}
+#gapbar{display:none;background:var(--tintWarn);color:var(--txtWarn);padding:5px 12px;font-size:12px;line-height:1.5;text-align:center}
+#gapbar.on{display:block}
+#gapbar b{font-weight:600}
 #main{flex:1;overflow-y:auto;overflow-x:hidden;position:relative;-webkit-overflow-scrolling:touch;padding-bottom:calc(60px + env(safe-area-inset-bottom))}
 #tl{background:var(--card);margin:8px 8px 16px;border-radius:14px;overflow:hidden;box-shadow:var(--cardshadow)}
 .row{display:flex;align-items:flex-start;gap:9px;padding:9px 12px;border-bottom:1px solid var(--line)}
@@ -368,6 +371,7 @@ html.dark #nightBtn .moon{display:none}
 
 <div id="hdr">
   <div class="hrow1"><span id="babyline">🌱 悠悠</span><button id="nightBtn" aria-label="夜间模式"><svg class="moon" viewBox="0 0 24 24"><path d="M14.2 3.6A8.6 8.6 0 1 0 20.4 17 9.6 9.6 0 0 1 14.2 3.6z"/></svg><svg class="sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.3"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"><path d="M12 2.6v2.4M12 19v2.4M2.6 12h2.4M19 12h2.4M5.4 5.4l1.7 1.7M16.9 16.9l1.7 1.7M18.6 5.4l-1.7 1.7M7.1 16.9l-1.7 1.7"/></g></svg></button></div>
+  <div id="gapbar"></div>
   <div class="hrow2">
     <button class="arrow" id="prevD">‹</button>
     <div class="dwrap"><span id="dlabel">…</span><input type="date" id="dpick"></div>
@@ -486,6 +490,46 @@ function dailyGhost(ds,recs,resp){
   if(has)return null;
   var v=(resp&&resp.vitaminNext)||'D';
   return {ghost:true,key:it.key,variant:v,label:it.name[v]||it.name.D,t:dayStartMs(ds)+it.at*60000};
+}
+/* ═══ 漏记提醒（头部顶上一行，2026-09-28 她要的）═══
+   问题不是「漏」，是「发现得晚」：隔几天才回头看，那时已经想不起来了。所以只做一件事——
+   过了截止时刻还没记，就在每个页面最顶上挂一行；昨天漏的今天全天继续挂着，第二天早上一定看得到。
+   截止时刻＝近 30 天该项第 N 顿的 p90 时刻 + 约 1–1.5 小时余量（09-28 取数）：
+     辅食 p90 08:22 / 13:06 / 18:46 → 10:00 / 14:30 / 20:00
+     配方奶 p90 09:31 / 15:13 / 20:25 → 11:00 / 16:30 / 21:30
+     母乳 p90 10:10 → 12:00 · 洗澡 p90 19:34 → 21:00 · 便便：距上一次 ≥48 小时
+   和上面 DAILY_ITEMS 的分工：虚位行只放「做没做」的二值项（维 D）；有量有次数的放这里按顿数对账。
+   规则写死在这里，不进库——她 09-28 定了不为这事建表；要改截止时刻就改这几个数。
+   数据全来自 ?data=1&date=今天 那次请求（服务端本来就多带前一天 + lastPoopAt），不另发请求。*/
+var GAP_RULES=[
+  {type:'feed_solid',name:'辅食',by:[10*60,14*60+30,20*60]},
+  {type:'feed_formula',name:'配方奶',by:[11*60,16*60+30,21*60+30]},
+  {type:'feed_breast',name:'母乳',by:[12*60]},
+  {type:'bath',name:'洗澡',by:[21*60]}];
+var POOP_GAP_H=48;
+function gapList(recs,ds,nowMin){
+  var out=[];
+  GAP_RULES.forEach(function(g){
+    var n=0;
+    recs.forEach(function(r){if(r.type===g.type&&bjDateStr(new Date(r.start_at).getTime())===ds)n++});
+    var miss=g.by.filter(function(m){return m<=nowMin}).length-n;
+    if(miss>0)out.push(g.name+(g.by.length>1?' '+miss+' 顿':''));
+  });
+  return out;
+}
+function renderGap(d){
+  var el=document.getElementById('gapbar');if(!el||!d)return;
+  var today=todayStr(),recs=d.records||[],nb=bj(Date.now());
+  var t=gapList(recs,today,nb.getUTCHours()*60+nb.getUTCMinutes());
+  var y=gapList(recs,shiftDate(today,-1),24*60);
+  var parts=[];
+  if(t.length)parts.push('今天还差：<b>'+t.join(' · ')+'</b>');
+  if(y.length)parts.push('昨天漏：<b>'+y.join(' · ')+'</b>');
+  if(d.lastPoopAt){var h=(Date.now()-new Date(d.lastPoopAt).getTime())/3600e3;
+    if(h>=POOP_GAP_H)parts.push('便便 <b>'+Math.floor(h)+' 小时</b>没记')}
+  el.innerHTML=parts.map(function(x){return '⚠️ '+x}).join('<br>');   // 一类一行，不让「辅食 3｜顿」折在中间
+  el.className=parts.length?'on':'';
+  fixPad();
 }
 function durTxt(min){min=Math.round(min);var h=Math.floor(min/60),m=min%60;return (h?h+'小时':'')+(m||!h?m+'分钟':'')}
 function durTxt5(min){return durTxt(Math.floor(min/5)*5)}
@@ -2170,6 +2214,7 @@ function loadRec(tryN){
     clearTimeout(tm);
     if(d.ok===false){showErr(d.msg||'加载失败',function(){loadRec()});return}
     showSkel(false);document.getElementById('err').style.display='none';state.data=d;
+    if(state.date===todayStr())renderGap(d);          // 只拿「今天」那次的数据算漏记；翻到别的日子时这行保持不动
     if(state.view==='rec')renderRec();else if(state.view==='stat')renderStat();
   }).catch(function(){
     clearTimeout(tm);
