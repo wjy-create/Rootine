@@ -501,6 +501,10 @@ function dailyGhost(ds,recs,resp){
    和上面 DAILY_ITEMS 的分工：虚位行只放「做没做」的二值项（维 D）；有量有次数的放这里按顿数对账。
    规则写死在这里，不进库——她 09-28 定了不为这事建表；要改截止时刻就改这几个数。
    数据全来自 ?data=1&date=今天 那次请求（服务端本来就多带前一天 + lastPoopAt），不另发请求。*/
+/* 辅食 10-21 起只记食材不记量（Celine 10-23 定，10-21 起实际已不记）。这天之前的日子摘要里照旧显示毫升合计，之后只显示顿数。
+   日期是北京日期字符串，直接按字典序比。 */
+var SOLID_ML_UNTIL='2026-10-21';
+function solidMlDay(ds){return ds<SOLID_ML_UNTIL}
 var GAP_RULES=[
   {type:'feed_solid',name:'辅食',by:[10*60,14*60+30,20*60]},
   {type:'feed_formula',name:'配方奶',by:[11*60,16*60+30,21*60+30]},
@@ -706,7 +710,7 @@ function statCards(rs){
   var now=Date.now(),today=todayStr(),h='';
   function pick(types){var b=null;rs.forEach(function(r){if(types.indexOf(r.type)<0)return;var t=new Date(r.start_at).getTime();if(!b||t>b._t){r._t=t;b=r}});return b}
   // 今日累计
-  var tF=0,tBot=0,tS=0,tSml=0,tB=0,tBL=0,tBR=0,nPoop=0;
+  var tF=0,tBot=0,tS=0,tB=0,tBL=0,tBR=0,nPoop=0;
   var sag=sleepNatDay(rs,today),slMin=sag.tot,napMin=sag.nap;
   rs.forEach(function(r){
     if(r.type==='sleep')return;                       // 睡眠已由 sleepNatDay 统一算过
@@ -714,7 +718,7 @@ function statCards(rs){
     var d=r.data||{};
     if(r.type==='feed_formula')tF+=(+d.ml||0);
     if(r.type==='feed_bottle')tBot+=(+d.ml||0);
-    if(r.type==='feed_solid'){tS++;tSml+=(+d.ml||0)}
+    if(r.type==='feed_solid')tS++;
     if(r.type==='feed_breast'){tB++;if(d.open&&d.segs){var so=segSums(d.segs);tBL+=so.L;tBR+=so.R}else{tBL+=(+d.leftMin||0)+(+d.min||0);tBR+=(+d.rightMin||0)}}
     if(r.type==='diaper_poop')nPoop++;
   });
@@ -724,7 +728,7 @@ function statCards(rs){
   if(fd){var fdd=fd.data||{};
     var det=(fd.type==='feed_breast')?breastPink(fdd):((fd.type==='feed_formula'||fd.type==='feed_bottle')?formulaPink(fdd):((fdd.ml?fdd.ml+'ml ':'')+(fdd.food||'')));
     cv=fmtT(fd._t)+' '+(LABEL[fd.type]||'')+' '+esc(det)+'<br>距现在 <b>'+durTxt5((now-fd._t)/60000)+'</b>'}
-  cs='今日 配方奶 '+tF+'ml'+(tBot?' · 瓶喂母乳 '+tBot+'ml':'')+' · 辅食 '+tS+' 顿'+(tSml?'（'+tSml+'ml）':'')+' · 亲喂 '+tB+' 次';
+  cs='今日 配方奶 '+tF+'ml'+(tBot?' · 瓶喂母乳 '+tBot+'ml':'')+' · 辅食 '+tS+' 顿 · 亲喂 '+tB+' 次';
   // 下顿先喂哪边：看两侧各自「上一次被排空」的时刻（亲喂+挤奶都算），更久没排的一侧优先（防胀奶）；分钟数只作展示
   var lastL=0,lastR=0;
   rs.forEach(function(r){
@@ -811,7 +815,7 @@ function daySummaryHTML(rs,dateStr){
   if(bN)out.push(mk('feed_breast',bN+'次',(bL+bMin)+'/'+bR+'分'));
   if(fN)out.push(mk('feed_formula',fN+'次',fMl+'ml'));
   if(boN)out.push(mk('feed_bottle',boN+'次',boMl+'ml'));
-  if(sN)out.push(mk('feed_solid',sN+'次',sMl?sMl+'ml':''));
+  if(sN)out.push(mk('feed_solid',sN+'次',solidMlDay(dateStr)&&sMl?sMl+'ml':''));   // 10-23 起只报顿数
   if(slMin)out.push(mk('sleep',durTxt5(slMin),napMin?'小觉'+durTxt5(napMin):''));
   if(poop)out.push(mk('diaper_poop',poop+'次',''));
   if(pee)out.push(mk('diaper_pee',pee+'次',''));
@@ -1053,10 +1057,10 @@ function renderSum(){
         if(r.type==='feed_formula'||r.type==='feed_bottle'){f+=(+d.ml||0);any=true}
         if(r.type==='feed_solid'){s2+=(+d.ml||0);any=true}
         if(r.type==='feed_breast'){bm+=(+d.leftMin||0)+(+d.rightMin||0)+(+d.min||0);any=true}});
-      if(any){fA.push(f);sA.push(s2);bA.push(bm)}
+      if(any){fA.push(f);bA.push(bm);if(solidMlDay(ds)&&s2)sA.push(s2)}
     });
     var avF=function(a){return Math.round(a.reduce(function(x,y){return x+y},0)/a.length)};
-    var feedAvg=fA.length?'<div class="avgfloat"><span style="border:1.5px solid #f5a623;color:#a8720c">平均奶 '+avF(fA)+'ml</span><span style="border:1.5px solid #8cc63e;color:#5e8f2e">平均辅食 '+avF(sA)+'ml</span><span style="border:1.5px solid #f27ba3;color:#c14e7d">平均母乳 '+avF(bA)+'分</span></div>':'';
+    var feedAvg=fA.length?'<div class="avgfloat"><span style="border:1.5px solid #f5a623;color:#a8720c">平均奶 '+avF(fA)+'ml</span>'+(sA.length?'<span style="border:1.5px solid #8cc63e;color:#5e8f2e">平均辅食 '+avF(sA)+'ml</span>':'')+'<span style="border:1.5px solid #f27ba3;color:#c14e7d">平均母乳 '+avF(bA)+'分</span></div>':'';
     if(state.sum.feedMode==='kind'){
       h+=kindHTML(rs,days);
     }else if(state.sum.feedMode==='time'){
@@ -1068,13 +1072,14 @@ function renderSum(){
       var rows=[['feed_breast',function(ds){var n=0,L=0,R=0,M=0;rs.forEach(function(r){if(!inDay(r,ds)||r.type!=='feed_breast')return;var d=r.data||{};n++;L+=(+d.leftMin||0);R+=(+d.rightMin||0);M+=(+d.min||0)});return n?(n+'次<br>左<b>'+(L+M)+'</b>分<br>右<b>'+R+'</b>分'):'0次'}],
                 ['feed_formula',function(ds){var n=0,ml=0;rs.forEach(function(r){if(!inDay(r,ds)||r.type!=='feed_formula')return;n++;ml+=(+(r.data||{}).ml||0)});return n?(n+'次<br><b>'+ml+'ml</b>'):'0次'}],
                 ['feed_bottle',function(ds){var n=0,ml=0;rs.forEach(function(r){if(!inDay(r,ds)||r.type!=='feed_bottle')return;n++;ml+=(+(r.data||{}).ml||0)});return n?(n+'次<br><b>'+ml+'ml</b>'):'0次'}],
-                ['feed_solid',function(ds){var n=0,ml=0;rs.forEach(function(r){if(!inDay(r,ds)||r.type!=='feed_solid')return;n++;ml+=(+(r.data||{}).ml||0)});return n?(n+'次<br><b>'+ml+'ml</b>'):'0次'}]];
+                ['feed_solid',function(ds){var n=0,ml=0;rs.forEach(function(r){if(!inDay(r,ds)||r.type!=='feed_solid')return;n++;ml+=(+(r.data||{}).ml||0)});return n?(n+'次'+(solidMlDay(ds)&&ml?'<br><b>'+ml+'ml</b>':'')):'0次'}]];   // 10-23 起只报顿数
       h+='<div class="qtable">';
       rows.forEach(function(row){h+='<div class="qrow"><span class="qic">'+badge(row[0])+'</span>';days.forEach(function(ds){h+='<div class="qcell">'+row[1](ds)+'</div>'});h+='</div>'});
       h+='</div>';
       var COLOR={feed_formula:'#f5a623',feed_bottle:'#d4b23c',feed_solid:'#8cc63e',water:'#54b8e0',drink:'#54b8e0'};
       var daySegs=days.map(function(ds){
         var segs=[];rs.forEach(function(r){if(!inDay(r,ds))return;var ml=+((r.data||{}).ml)||0;if(!ml)return;
+          if(r.type==='feed_solid'&&!solidMlDay(ds))return;   // 10-23 起辅食不进量柱
           if(COLOR[r.type])segs.push({ml:ml,c:COLOR[r.type],t:new Date(r.start_at).getTime()})});
         segs.sort(function(a,b){return a.t-b.t});
         return segs});
@@ -1089,10 +1094,10 @@ function renderSum(){
         h+='</div></div>';
       });
       h+='</div><div class="daylabs" style="padding-left:34px">'+days.map(function(ds){var dow=new Date(ymdUtc(ds)).getUTCDay();return '<div class="daylab'+(dow===6?' sat':'')+(dow===0?' sun':'')+'">'+mdLabel(ds)+'</div>'}).join('')+'</div>';
-      h+='<div class="legend"><span class="lg"><i style="background:#f5a623"></i>配方奶</span><span class="lg"><i style="background:#d4b23c"></i>瓶喂母乳</span><span class="lg"><i style="background:#8cc63e"></i>辅食</span><span class="lg"><i style="background:#54b8e0"></i>水/饮料</span></div>';
+      h+='<div class="legend"><span class="lg"><i style="background:#f5a623"></i>配方奶</span><span class="lg"><i style="background:#d4b23c"></i>瓶喂母乳</span>'+(days.some(solidMlDay)?'<span class="lg"><i style="background:#8cc63e"></i>辅食</span>':'')+'<span class="lg"><i style="background:#54b8e0"></i>水/饮料</span></div>';
     }
     if(state.sum.feedMode==='amount'&&fA.length){
-      h+='<div class="legend" style="padding-top:8px">平均：<span style="color:#f5a623;font-weight:600">奶 '+avF(fA)+'ml</span>　<span style="color:#8cc63e;font-weight:600">辅食 '+avF(sA)+'ml</span>　<span style="color:#f27ba3;font-weight:600">母乳 '+avF(bA)+'分</span></div>';
+      h+='<div class="legend" style="padding-top:8px">平均：<span style="color:#f5a623;font-weight:600">奶 '+avF(fA)+'ml</span>　'+(sA.length?'<span style="color:#8cc63e;font-weight:600">辅食 '+avF(sA)+'ml</span>　':'')+'<span style="color:#f27ba3;font-weight:600">母乳 '+avF(bA)+'分</span></div>';
     }
   }
   if(sub==='grow'){
@@ -2429,7 +2434,7 @@ function editDetail(rec){
   function num(msg,cur){var v=prompt(msg,cur==null?'':cur);if(v===null)return null;var n=parseFloat(v);return isNaN(n)?null:n}
   if(t==='feed_formula'||t==='feed_bottle'||t==='water'||t==='drink'){var ml=num('毫升数',d.ml);if(ml===null)return;patch={ml:ml}}
   else if(t==='feed_breast'){var L=num('左边分钟',d.leftMin||d.min||0);if(L===null)return;var R=num('右边分钟',d.rightMin||0);if(R===null)return;patch={leftMin:L,rightMin:R,min:0}}
-  else if(t==='feed_solid'){var fo=prompt('吃了什么',d.food||'');if(fo===null)return;var sml=num('毫升数（没有填0）',d.ml||0);if(sml===null)return;patch={food:fo,ml:sml}}
+  else if(t==='feed_solid'){var fo=prompt('吃了什么',d.food||'');if(fo===null)return;patch={food:fo}}   // 10-23 起只记食材不记量
   else if(t==='sleep'){var du=num('睡眠时长（分钟）',d.durationMin||'');if(du===null)return;patch={durationMin:du,open:false}}
   else if(t==='walk'){var dw=num('散步时长（分钟）',d.durationMin||'');if(dw===null)return;patch={durationMin:dw,open:false}}
   else if(t==='temp'){var tc=num('体温（°C）',d.tempC);if(tc===null)return;patch={tempC:tc}}
