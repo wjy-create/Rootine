@@ -505,6 +505,23 @@ function dailyGhost(ds,recs,resp){
    日期是北京日期字符串，直接按字典序比。 */
 var SOLID_ML_UNTIL='2026-10-21';
 function solidMlDay(ds){return ds<SOLID_ML_UNTIL}
+/* 乳品算奶（Celine 11-25 定）：酸奶记成 feed_solid、带毫升，但它算进每天的总奶量，所以不受上面的分界影响，
+   量柱里单独一色、计入「平均奶」，并从辅食毫升里扣掉（不重复计）。
+   认法：食材文本经 food_tag 切词后**只命中 dairy 一类**。混合菜（「三文鱼洋葱奶酪番茄拌饭 60ml」）命中多类，
+   毫升是整碗的，不算奶。加新说法（如「牛奶」）只改 food_tag 表。
+   没报毫升、只说「一袋酸奶」：一袋按 50ml（Celine 11-25 定），「两袋」×2、「半袋」×0.5。报了毫升以报的为准。 */
+var DAIRY_BAG_ML=50;
+function dairyMl(r,ftags){
+  if(r.type!=='feed_solid'&&r.type!=='snack')return 0;
+  if(!ftags||!ftags.length)return 0;
+  var d=r.data||{},txt=d.food||r.note||'';
+  var k=Object.keys(tagFood(txt,ftags).hits).filter(function(t){return t!=='ignore'});
+  if(!(k.length===1&&k[0]==='dairy'))return 0;
+  var ml=+d.ml||0;if(ml)return ml;
+  var m=String(txt).match(/(半|[一二两三四五\d]+)袋/);if(!m)return 0;
+  var n={'半':0.5,'一':1,'二':2,'两':2,'三':3,'四':4,'五':5}[m[1]]||+m[1]||0;
+  return Math.round(n*DAIRY_BAG_ML);
+}
 var GAP_RULES=[
   {type:'feed_solid',name:'辅食',by:[10*60,14*60+30,20*60]},
   {type:'feed_formula',name:'配方奶',by:[11*60,16*60+30,21*60+30]},
@@ -1048,14 +1065,15 @@ function renderSum(){
   if(sub==='feed'){
     h+='<div class="ctlrow"><span></span><div class="seg2"><button data-fm="time" class="'+(state.sum.feedMode==='time'?'on':'')+'">时间</button><button data-fm="amount" class="'+(state.sum.feedMode==='amount'?'on':'')+'">量</button><button data-fm="kind" class="'+(state.sum.feedMode==='kind'?'on':'')+'">种类</button></div><span></span></div>';
     // 周均（截至昨天）——时间视图悬浮在图表右上角，量视图仍在底部一行
-    var ystF=shiftDate(todayStr(),-1),fA=[],sA=[],bA=[];
+    var ystF=shiftDate(todayStr(),-1),fA=[],sA=[],bA=[],ftagsF=((state.sum.data||{}).foodTags)||[];
     days.forEach(function(ds){
       if(ymdUtc(ds)>ymdUtc(ystF))return;
       var f=0,s2=0,bm=0,any=false;
       rs.forEach(function(r){if(!inDay(r,ds))return;var d=r.data||{};
-        // 「平均奶」= 配方奶 + 瓶喂母乳，都是瓶子里进肚的奶量（挤奶 feed_pump 不算，那是产出不是摄入）
+        // 「平均奶」= 配方奶 + 瓶喂母乳 + 乳品（酸奶，11-25 起），都是进肚的奶量（挤奶 feed_pump 不算，那是产出不是摄入）
         if(r.type==='feed_formula'||r.type==='feed_bottle'){f+=(+d.ml||0);any=true}
-        if(r.type==='feed_solid'){s2+=(+d.ml||0);any=true}
+        var dm=dairyMl(r,ftagsF);if(dm){f+=dm;any=true}
+        if(r.type==='feed_solid'){s2+=dm?0:(+d.ml||0);any=true}
         if(r.type==='feed_breast'){bm+=(+d.leftMin||0)+(+d.rightMin||0)+(+d.min||0);any=true}});
       if(any){fA.push(f);bA.push(bm);if(solidMlDay(ds)&&s2)sA.push(s2)}
     });
@@ -1072,13 +1090,15 @@ function renderSum(){
       var rows=[['feed_breast',function(ds){var n=0,L=0,R=0,M=0;rs.forEach(function(r){if(!inDay(r,ds)||r.type!=='feed_breast')return;var d=r.data||{};n++;L+=(+d.leftMin||0);R+=(+d.rightMin||0);M+=(+d.min||0)});return n?(n+'次<br>左<b>'+(L+M)+'</b>分<br>右<b>'+R+'</b>分'):'0次'}],
                 ['feed_formula',function(ds){var n=0,ml=0;rs.forEach(function(r){if(!inDay(r,ds)||r.type!=='feed_formula')return;n++;ml+=(+(r.data||{}).ml||0)});return n?(n+'次<br><b>'+ml+'ml</b>'):'0次'}],
                 ['feed_bottle',function(ds){var n=0,ml=0;rs.forEach(function(r){if(!inDay(r,ds)||r.type!=='feed_bottle')return;n++;ml+=(+(r.data||{}).ml||0)});return n?(n+'次<br><b>'+ml+'ml</b>'):'0次'}],
-                ['feed_solid',function(ds){var n=0,ml=0;rs.forEach(function(r){if(!inDay(r,ds)||r.type!=='feed_solid')return;n++;ml+=(+(r.data||{}).ml||0)});return n?(n+'次'+(solidMlDay(ds)&&ml?'<br><b>'+ml+'ml</b>':'')):'0次'}]];   // 10-23 起只报顿数
+                ['feed_solid',function(ds){var n=0,ml=0;rs.forEach(function(r){if(!inDay(r,ds)||r.type!=='feed_solid')return;n++;ml+=dairyMl(r,ftagsF)?0:(+(r.data||{}).ml||0)});return n?(n+'次'+(solidMlDay(ds)&&ml?'<br><b>'+ml+'ml</b>':'')):'0次'}]];   // 10-23 起只报顿数
       h+='<div class="qtable">';
       rows.forEach(function(row){h+='<div class="qrow"><span class="qic">'+badge(row[0])+'</span>';days.forEach(function(ds){h+='<div class="qcell">'+row[1](ds)+'</div>'});h+='</div>'});
       h+='</div>';
-      var COLOR={feed_formula:'#f5a623',feed_bottle:'#d4b23c',feed_solid:'#8cc63e',water:'#54b8e0',drink:'#54b8e0'};
+      var COLOR={feed_formula:'#f5a623',feed_bottle:'#d4b23c',feed_solid:'#8cc63e',water:'#54b8e0',drink:'#54b8e0'},DAIRY_C='#c58fd0';
       var daySegs=days.map(function(ds){
-        var segs=[];rs.forEach(function(r){if(!inDay(r,ds))return;var ml=+((r.data||{}).ml)||0;if(!ml)return;
+        var segs=[];rs.forEach(function(r){if(!inDay(r,ds))return;
+          var dm=dairyMl(r,ftagsF);if(dm){segs.push({ml:dm,c:DAIRY_C,t:new Date(r.start_at).getTime()});return}   // 乳品算奶，不受辅食分界影响；「一袋」按 50ml
+          var ml=+((r.data||{}).ml)||0;if(!ml)return;
           if(r.type==='feed_solid'&&!solidMlDay(ds))return;   // 10-23 起辅食不进量柱
           if(COLOR[r.type])segs.push({ml:ml,c:COLOR[r.type],t:new Date(r.start_at).getTime()})});
         segs.sort(function(a,b){return a.t-b.t});
@@ -1094,7 +1114,7 @@ function renderSum(){
         h+='</div></div>';
       });
       h+='</div><div class="daylabs" style="padding-left:34px">'+days.map(function(ds){var dow=new Date(ymdUtc(ds)).getUTCDay();return '<div class="daylab'+(dow===6?' sat':'')+(dow===0?' sun':'')+'">'+mdLabel(ds)+'</div>'}).join('')+'</div>';
-      h+='<div class="legend"><span class="lg"><i style="background:#f5a623"></i>配方奶</span><span class="lg"><i style="background:#d4b23c"></i>瓶喂母乳</span>'+(days.some(solidMlDay)?'<span class="lg"><i style="background:#8cc63e"></i>辅食</span>':'')+'<span class="lg"><i style="background:#54b8e0"></i>水/饮料</span></div>';
+      h+='<div class="legend"><span class="lg"><i style="background:#f5a623"></i>配方奶</span><span class="lg"><i style="background:#d4b23c"></i>瓶喂母乳</span><span class="lg"><i style="background:#c58fd0"></i>酸奶/乳品</span>'+(days.some(solidMlDay)?'<span class="lg"><i style="background:#8cc63e"></i>辅食</span>':'')+'<span class="lg"><i style="background:#54b8e0"></i>水/饮料</span></div>';
     }
     if(state.sum.feedMode==='amount'&&fA.length){
       h+='<div class="legend" style="padding-top:8px">平均：<span style="color:#f5a623;font-weight:600">奶 '+avF(fA)+'ml</span>　'+(sA.length?'<span style="color:#8cc63e;font-weight:600">辅食 '+avF(sA)+'ml</span>　':'')+'<span style="color:#f27ba3;font-weight:600">母乳 '+avF(bA)+'分</span></div>';
